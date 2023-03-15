@@ -1,0 +1,62 @@
+﻿@namespace ProReception.DistributionServerInfrastructure.Components
+
+@using Microsoft.AspNetCore.SignalR.Client
+@using ProReception.DistributionServerInfrastructure.Hubs
+@using ProReception.DistributionServerInfrastructure.Settings
+
+@inject NavigationManager NavigationManager
+@inject ISettingsManagerBase SettingsManager
+
+@implements IAsyncDisposable
+
+<MudText Typo="Typo.h3" GutterBottom="true">Logs</MudText>
+<MudText Class="mb-8">Shows a live view of the logs. To see the historic logs, look at the log files located at @SettingsManager.GetLogFilesPath()</MudText>
+
+@if (_logs.Count == 0)
+{
+    <MudProgressCircular Color="Color.Default" Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@_logs.OrderByDescending(x => x.Timestamp)" Hover="true" Breakpoint="Breakpoint.Sm">
+        <HeaderContent>
+            <MudTh>Timestamp</MudTh>
+            <MudTh>Message</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Timestamp">@context.Timestamp.ToString("s")</MudTd>
+            <MudTd DataLabel="Log message">@context.Message</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+}
+
+@code {
+    private HubConnection? _hubConnection;
+    private readonly List<LogsHub.LogMessage> _logs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/logs-hub"))
+            .Build();
+
+        _hubConnection.On<LogsHub.LogMessage>("ReceiveLog", logMessage =>
+        {
+            _logs.Add(logMessage);
+            InvokeAsync(StateHasChanged);
+        });
+
+        await _hubConnection.StartAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

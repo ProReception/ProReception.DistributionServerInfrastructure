@@ -1,0 +1,99 @@
+﻿@namespace ProReception.DistributionServerInfrastructure.Components
+
+@using FluentValidation
+@using ProReception.DistributionServerInfrastructure.ProReceptionApi
+@using ProReception.DistributionServerInfrastructure.Settings
+@using ProReception.DistributionServerInfrastructure.Validation
+@using Severity = MudBlazor.Severity
+
+<MudText Typo="Typo.h3" GutterBottom="true">Pro Reception Connection</MudText>
+
+@if (_tokensExists)
+{
+    <MudAlert Severity="Severity.Success" Class="my-2">Connection established</MudAlert>
+    <MudButton Variant="Variant.Filled" Color="Color.Error" Class="ml-auto" OnClick="@(async () => await Disconnect())">Disconnect</MudButton>
+}
+else
+{
+    <MudCard>
+        <MudForm Model="@_model" @ref="_form" Validation="@(_modelValidator.ValidateValue)">
+            <MudCardContent>
+                <MudTextField @bind-Value="_model.Username" Label="Username" For="() => _model.Username" />
+                <MudTextField InputType="InputType.Password" @bind-Value="_model.Password" Label="Password" For="() => _model.Password" />
+            </MudCardContent>
+        </MudForm>
+        <MudCardActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto" OnClick="@(async () => await Login())">Login</MudButton>
+        </MudCardActions>
+        @if (!string.IsNullOrWhiteSpace(_loginAlertMessage))
+        {
+            <MudAlert Severity="Severity.Error">@_loginAlertMessage</MudAlert>
+        }
+    </MudCard>
+}
+
+@code {
+    readonly LoginModel _model = new();
+    readonly LoginModelValidator _modelValidator = new();
+
+    bool _tokensExists;
+    MudForm _form = new();
+    string? _loginAlertMessage;
+
+    [Inject]
+    ISettingsManagerBase SettingsManager { get; set; } = default!;
+
+    [Inject]
+    IProReceptionApiClient ApiClient { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        var tokens = SettingsManager.GetTokens();
+
+        if (tokens?.AccessToken != null)
+        {
+            _tokensExists = true;
+        }
+    }
+
+    private async Task Login()
+    {
+        try
+        {
+            _loginAlertMessage = null;
+            await ApiClient.GetAndSaveTokens(_model.Username!, _model.Password!);
+            _tokensExists = true;
+        }
+        catch (Exception exception)
+        {
+            _loginAlertMessage = $"Received error when trying to authenticate to Pro Reception: {exception.Message}";
+        }
+    }
+
+    private async Task Disconnect()
+    {
+        await SettingsManager.RemoveTokens();
+        _tokensExists = false;
+    }
+
+    public class LoginModel
+    {
+        public string? Username { get; set; }
+
+        public string? Password { get; set; }
+    }
+
+    public class LoginModelValidator : MudValidationBase<LoginModel>
+    {
+        public LoginModelValidator()
+        {
+            RuleFor(x => x.Username)
+                .NotEmpty();
+
+            RuleFor(x => x.Password)
+                .NotEmpty();
+        }
+    }
+}
