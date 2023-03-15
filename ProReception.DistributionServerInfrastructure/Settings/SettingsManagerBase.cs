@@ -12,7 +12,6 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
     private readonly byte[] _authKey;
     private readonly string _settingsFilePath;
     private readonly string _logsPath;
-    private readonly T _settings;
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
     protected SettingsManagerBase(string appName, string cryptKey, string authKey)
@@ -23,14 +22,16 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
         _authKey = Convert.FromBase64String(authKey);
         _settingsFilePath = $"{SettingsDirectory}\\settings";
         _logsPath = $"{SettingsDirectory}\\Logs";
-        _settings = Load();
+
+        Settings = Load();
     }
 
-    public string SettingsDirectory { get; }
+    protected string SettingsDirectory { get; }
+    protected T Settings { get; }
 
     public TokensRecord? GetTokens()
-        => _settings.ProReceptionTokens != null
-            ? new TokensRecord(_settings.ProReceptionTokens.AccessToken, _settings.ProReceptionTokens.RefreshToken, _settings.ProReceptionTokens.ExpiresAtUtc)
+        => Settings.ProReceptionTokens != null
+            ? new TokensRecord(Settings.ProReceptionTokens.AccessToken, Settings.ProReceptionTokens.RefreshToken, Settings.ProReceptionTokens.ExpiresAtUtc)
             : null;
 
     public async Task SaveTokens(string accessToken, string refreshToken, DateTime expiresAtUtc)
@@ -59,7 +60,7 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
     protected async Task ThreadSafeUpdate(Action<T> updateAction)
     {
         await _semaphoreSlim.WaitAsync();
-        updateAction(_settings);
+        updateAction(Settings);
         await Save();
         _semaphoreSlim.Release();
     }
@@ -68,7 +69,7 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
     {
         await using var settingsFileStream = new FileStream(_settingsFilePath, FileMode.Create);
         await using var streamWriter = new StreamWriter(settingsFileStream);
-        await streamWriter.WriteAsync(Encryption.Encrypt(JsonSerializer.Serialize(_settings), _cryptKey, _authKey));
+        await streamWriter.WriteAsync(Encryption.Encrypt(JsonSerializer.Serialize(Settings), _cryptKey, _authKey));
     }
 
     private T Load()
