@@ -7,16 +7,17 @@ using Models;
 
 public static class PrinterLabelExtensions
 {
-    public static async Task<FileResponse?> GetPrinterLabelAsync(this IProReceptionApiClient proReceptionApiClient)
+    public static async Task<LabelResponse?> GetPrinterLabelAsync(this IProReceptionApiClient proReceptionApiClient)
     {
         try
         {
             var response = await proReceptionApiClient.GetRaw("printer-label");
 
-            return new FileResponse
+            return new LabelResponse
             {
                 Filename = new ContentDisposition(response.Headers.FirstOrDefault("Content-Disposition")).FileName,
-                FileContent = await response.GetBytesAsync()
+                FileContent = await response.GetBytesAsync(),
+                LabelVersion = int.Parse(response.Headers.FirstOrDefault("X-Label-Version") ?? "0")
             };
         }
         catch (FlurlHttpException flurlHttpException) when (flurlHttpException.StatusCode == (int)HttpStatusCode.NotFound)
