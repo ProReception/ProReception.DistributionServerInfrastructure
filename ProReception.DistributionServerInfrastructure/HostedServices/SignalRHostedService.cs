@@ -44,7 +44,7 @@ public abstract class SignalRHostedService<T> : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation($"Stopping {nameof(T)}...");
+        _logger.LogInformation($"Stopping {typeof(T).Name}...");
 
         // Stop called without start
         if (_startUpTask == null)
@@ -73,7 +73,7 @@ public abstract class SignalRHostedService<T> : IHostedService
 
     private async Task ExecuteStartUp(CancellationToken cancellationToken, int tryCount = 1)
     {
-        _logger.LogInformation($"Starting {nameof(T)}...");
+        _logger.LogInformation($"Starting {typeof(T).Name}...");
 
         var proReceptionTokens = await GetProReceptionTokens(cancellationToken);
 

@@ -67,14 +67,14 @@ public abstract class ApiClientBase
     {
         var baseRequest = await GetBaseRequestAsync();
 
-        return await _retryPolicy.ExecuteAsync(() => getRequestFunc(baseRequest));
+        return await _retryPolicy.ExecuteAsync(async () => await getRequestFunc(baseRequest));
     }
 
     protected async Task Command(Func<IFlurlRequest, Task> postRequestFunc)
     {
         var baseRequest = await GetBaseRequestAsync();
 
-        await _retryPolicy.ExecuteAsync(() => postRequestFunc(baseRequest));
+        await _retryPolicy.ExecuteAsync(async () => await postRequestFunc(baseRequest));
     }
 
     private async Task<TokensRecord> SaveTokensToSettings(TokenResponse response)

@@ -4,5 +4,5 @@ using Internal;
 
 public abstract class BaseSettings
 {
-    internal Tokens? ProReceptionTokens { get; set; }
+    public Tokens? ProReceptionTokens { get; set; }
 }

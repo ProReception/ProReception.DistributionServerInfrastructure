@@ -1,6 +1,7 @@
 ﻿namespace ProReception.DistributionServerInfrastructure.ProReceptionApi.PrinterLabel;
 
 using System.Net;
+using System.Net.Mime;
 using Flurl.Http;
 using Models;
 
@@ -14,8 +15,8 @@ public static class PrinterLabelExtensions
 
             return new FileResponse
             {
-                Filename = response.Headers.FirstOrDefault("X-FileName"),
-                FileContent = await response.ResponseMessage.Content.ReadAsByteArrayAsync()
+                Filename = new ContentDisposition(response.Headers.FirstOrDefault("Content-Disposition")).FileName,
+                FileContent = await response.GetBytesAsync()
             };
         }
         catch (FlurlHttpException flurlHttpException) when (flurlHttpException.StatusCode == (int)HttpStatusCode.NotFound)
@@ -26,7 +27,8 @@ public static class PrinterLabelExtensions
 
     public static async Task<FileResponse?> GetPrinterLabelLogoAsync(this IProReceptionApiClient proReceptionApiClient)
     {
-        var labelLogoUrl = await proReceptionApiClient.Get<string?>("printer-label/logo-url");
+        var response = await proReceptionApiClient.GetRaw("printer-label/logo-url");
+        var labelLogoUrl = await response.GetStringAsync();
 
         if (string.IsNullOrWhiteSpace(labelLogoUrl))
         {
@@ -36,7 +38,7 @@ public static class PrinterLabelExtensions
         return new FileResponse
         {
             Filename = System.IO.Path.GetFileName(labelLogoUrl),
-            FileContent = await labelLogoUrl.GetBytesAsync()
+            FileContent = await response.GetBytesAsync()
         };
     }
 }
