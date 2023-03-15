@@ -10,7 +10,6 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
 {
     private readonly byte[] _cryptKey;
     private readonly byte[] _authKey;
-    private readonly string _settingsPath;
     private readonly string _settingsFilePath;
     private readonly string _logsPath;
     private readonly T _settings;
@@ -18,13 +17,16 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
 
     protected SettingsManagerBase(string appName, string cryptKey, string authKey)
     {
+        SettingsDirectory = $"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}\\Pro Reception\\{appName}";
+
         _cryptKey = Convert.FromBase64String(cryptKey);
         _authKey = Convert.FromBase64String(authKey);
-        _settingsPath = $"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}\\Pro Reception\\{appName}";
-        _settingsFilePath = $"{_settingsPath}\\settings";
-        _logsPath = $"{_settingsPath}\\Logs";
+        _settingsFilePath = $"{SettingsDirectory}\\settings";
+        _logsPath = $"{SettingsDirectory}\\Logs";
         _settings = Load();
     }
+
+    public string SettingsDirectory { get; }
 
     public TokensRecord? GetTokens()
         => _settings.ProReceptionTokens != null
@@ -71,9 +73,9 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
 
     private T Load()
     {
-        if (!Directory.Exists(_settingsPath))
+        if (!Directory.Exists(SettingsDirectory))
         {
-            Directory.CreateDirectory(_settingsPath);
+            Directory.CreateDirectory(SettingsDirectory);
         }
 
         if (!File.Exists(_settingsFilePath))
