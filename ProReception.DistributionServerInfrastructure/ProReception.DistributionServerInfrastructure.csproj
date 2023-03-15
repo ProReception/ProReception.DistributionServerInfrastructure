@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
-    <Import Project="$(ProjectDir)../../version.props" />
+    <Import Project="$(ProjectDir)../version.props" />
 
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
