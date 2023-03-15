@@ -45,6 +45,22 @@ Helper library with common infrastructure code for our distributed apps
      app.UseProReceptionDistributionServerInfrastructure();
      ```
 
+## Configuration
+
+These are the expected configuration values.
+
+### Pro Reception API
+
+There has to be a section in the configuration called `ProReceptionApi`:
+
+```json
+{
+  "ProReceptionApi": {
+    "BaseUrl": "https://localhost:7016"
+  }
+}
+```
+
 ## Components
 
 The components can be used inside your Razor views.
