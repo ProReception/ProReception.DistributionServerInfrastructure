@@ -15,9 +15,9 @@ public class ProReceptionApiClient : ApiClientBase, IProReceptionApiClient
 
     public async Task<T> Get<T>(string path) => await Query(req => req.AppendPathSegment(path).GetJsonAsync<T>());
 
-    public async Task Post<T>(string path, T data) => await Command(req => req.AppendPathSegment(path).PostJsonAsync(data));
+    public async Task Post(string path, object data) => await Command(req => req.AppendPathSegment(path).PostJsonAsync(data));
 
-    public async Task Put<T>(string path, T data) => await Command(req => req.AppendPathSegment(path).PutJsonAsync(data));
+    public async Task Put(string path, object data) => await Command(req => req.AppendPathSegment(path).PutJsonAsync(data));
 
-    public async Task Patch<T>(string path, T data) => await Command(req => req.AppendPathSegment(path).PatchJsonAsync(data));
+    public async Task Patch(string path, object data) => await Command(req => req.AppendPathSegment(path).PatchJsonAsync(data));
 }
