@@ -39,7 +39,7 @@ public static class PrinterLabelExtensions
         return new FileResponse
         {
             Filename = System.IO.Path.GetFileName(labelLogoUrl),
-            FileContent = await response.GetBytesAsync()
+            FileContent = await labelLogoUrl.GetBytesAsync()
         };
     }
 }
