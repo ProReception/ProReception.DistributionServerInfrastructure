@@ -3,7 +3,7 @@ Helper library with common infrastructure code for our distributed apps
 
 ## Status
 ![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/ProReception/ProReception.DistributionServerInfrastructure/nuget.yml?branch=main)
-![Nuget](https://img.shields.io/nuget/dt/ProReception.DistributionServerInfrastructure)
+![Nuget](https://img.shields.io/nuget/v/ProReception.DistributionServerInfrastructure)
 
 ## How to use
 1. Install via NuGet: `Install-Package ProReception.DistributionServerInfrastructure`
