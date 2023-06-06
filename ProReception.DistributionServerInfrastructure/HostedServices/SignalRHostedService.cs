@@ -90,6 +90,7 @@ public abstract class SignalRHostedService<T> : IHostedService
                 .WithUrl(_proReceptionApiConfiguration.BaseUrl.AppendPathSegment(HubPath), options =>
                 {
                     options.Headers.Add("Authorization", $"Bearer {proReceptionTokens.AccessToken}");
+                    options.Headers.Add("X-DistributionServerAppId", _settingsManagerBase.GetDistributionServerAppId().ToString());
                 })
                 .WithAutomaticReconnect()
                 .Build();

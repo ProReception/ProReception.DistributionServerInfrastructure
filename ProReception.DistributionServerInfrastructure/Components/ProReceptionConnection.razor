@@ -10,7 +10,7 @@
 
 @if (_tokensExists)
 {
-    <MudAlert Severity="Severity.Success" Class="my-2">Connection established</MudAlert>
+    <MudAlert Severity="Severity.Success" Class="my-2">Connection established, App ID: @SettingsManager.GetDistributionServerAppId()</MudAlert>
     <MudButton Variant="Variant.Filled" Color="Color.Error" Class="ml-auto" OnClick="@(async () => await Disconnect())">Disconnect</MudButton>
 }
 else

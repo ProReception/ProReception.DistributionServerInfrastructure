@@ -31,6 +31,8 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
     protected string SettingsDirectory { get; }
     protected T Settings { get; }
 
+    public Guid GetDistributionServerAppId() => Settings.DistributionServerAppId;
+
     public TokensRecord? GetTokens()
         => Settings.ProReceptionTokens != null
             ? new TokensRecord(Settings.ProReceptionTokens.AccessToken, Settings.ProReceptionTokens.RefreshToken, Settings.ProReceptionTokens.ExpiresAtUtc)
