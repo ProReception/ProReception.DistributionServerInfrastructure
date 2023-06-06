@@ -2,10 +2,12 @@
 
 using System.Text.Json;
 using AuthenticatedEncryption;
+using JetBrains.Annotations;
 using Models;
 using Models.Internal;
 using Models.Public;
 
+[PublicAPI]
 public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : BaseSettings, new()
 {
     private readonly byte[] _cryptKey;
@@ -56,7 +58,6 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
         return _logsPath;
     }
 
-    // ReSharper disable once MemberCanBePrivate.Global
     protected async Task ThreadSafeUpdate(Action<T> updateAction)
     {
         await _semaphoreSlim.WaitAsync();
