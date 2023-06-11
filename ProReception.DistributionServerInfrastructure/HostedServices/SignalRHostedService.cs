@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly;
+using Polly.Timeout;
 using ProReceptionApi;
 using Settings;
 using Settings.Models.Public;
@@ -71,10 +73,34 @@ public abstract class SignalRHostedService<T> : IHostedService
 
     protected abstract void ConfigureListeners(HubConnection hubConnection);
 
-    private async Task ExecuteStartUp(CancellationToken cancellationToken, int tryCount = 1)
+    private async Task ExecuteStartUp(CancellationToken cancellationToken)
     {
         _logger.LogInformation($"Starting {typeof(T).Name}...");
 
+        // Define a timeout policy
+        var timeoutPolicy = Policy.TimeoutAsync(30, TimeoutStrategy.Pessimistic);
+
+        // Define a retry policy
+        var retryPolicy = Policy
+            .Handle<Exception>()
+            .WaitAndRetryForeverAsync(
+                _ => TimeSpan.FromSeconds(10),
+                (exception, retryCount, timeToWait) =>
+                {
+                    _logger.LogWarning($"Attempt {retryCount} failed: {exception.Message}. Waiting {timeToWait} before next try.");
+                });
+
+        // Combine the timeout and retry policies
+        var combinedPolicy = Policy.WrapAsync(retryPolicy, timeoutPolicy);
+
+        await combinedPolicy.ExecuteAsync(async token =>
+        {
+            await LoginAndCreateSignalRConnection(token);
+        }, cancellationToken);
+    }
+
+    private async Task LoginAndCreateSignalRConnection(CancellationToken cancellationToken)
+    {
         var proReceptionTokens = await GetProReceptionTokens(cancellationToken);
 
         while(!cancellationToken.IsCancellationRequested && proReceptionTokens == null)
@@ -99,12 +125,9 @@ public abstract class SignalRHostedService<T> : IHostedService
 
             _hubConnection.Closed += async _ =>
             {
-                var secondsDelay = 10 * tryCount;
-                _logger.LogInformation("SignalR connection lost, will retry in {secondsDelay} seconds", secondsDelay);
-
+                _logger.LogInformation("SignalR connection lost, will retry...");
                 await _hubConnection.StopAsync(cancellationToken);
-                await Task.Delay(TimeSpan.FromSeconds(secondsDelay), cancellationToken);
-                await ExecuteStartUp(cancellationToken, ++tryCount);
+                await ExecuteStartUp(cancellationToken);
             };
 
             await _hubConnection.StartAsync(cancellationToken);
