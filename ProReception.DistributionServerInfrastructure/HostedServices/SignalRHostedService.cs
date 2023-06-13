@@ -101,15 +101,19 @@ public abstract class SignalRHostedService<T> : IHostedService
 
     private async Task LoginAndCreateSignalRConnection(CancellationToken cancellationToken)
     {
-        var proReceptionTokens = await GetProReceptionTokens(cancellationToken);
-
-        while(!cancellationToken.IsCancellationRequested && proReceptionTokens == null)
+        TokensRecord? proReceptionTokens;
+        do
         {
             proReceptionTokens = await GetProReceptionTokens(cancellationToken);
-        }
+        } while (!cancellationToken.IsCancellationRequested && string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken));
 
-        if (!cancellationToken.IsCancellationRequested && !string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken))
+        if (!cancellationToken.IsCancellationRequested)
         {
+            if (string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken))
+            {
+                throw new ApplicationException("The ProReception access token is null or empty (this should never happen)");
+            }
+
             _logger.LogInformation("Establishing SignalR connection...");
 
             _hubConnection = new HubConnectionBuilder()
