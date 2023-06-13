@@ -77,10 +77,6 @@ public abstract class SignalRHostedService<T> : IHostedService
     {
         _logger.LogInformation($"Starting {typeof(T).Name}...");
 
-        // Define a timeout policy
-        var timeoutPolicy = Policy.TimeoutAsync(30, TimeoutStrategy.Pessimistic);
-
-        // Define a retry policy
         var retryPolicy = Policy
             .Handle<Exception>()
             .WaitAndRetryForeverAsync(
@@ -90,10 +86,7 @@ public abstract class SignalRHostedService<T> : IHostedService
                     _logger.LogWarning($"Attempt {retryCount} failed: {exception.Message}. Waiting {timeToWait} before next try.");
                 });
 
-        // Combine the timeout and retry policies
-        var combinedPolicy = Policy.WrapAsync(retryPolicy, timeoutPolicy);
-
-        await combinedPolicy.ExecuteAsync(async token =>
+        await retryPolicy.ExecuteAsync(async token =>
         {
             await LoginAndCreateSignalRConnection(token);
         }, cancellationToken);
