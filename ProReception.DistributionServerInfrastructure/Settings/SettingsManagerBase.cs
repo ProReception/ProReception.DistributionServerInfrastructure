@@ -1,5 +1,6 @@
 ﻿namespace ProReception.DistributionServerInfrastructure.Settings;
 
+using System.Diagnostics;
 using System.Text.Json;
 using AuthenticatedEncryption;
 using JetBrains.Annotations;
@@ -16,6 +17,8 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
     private readonly string _logsPath;
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
+    private Guid? _debugOverrideDistributionServerAppId;
+
     protected SettingsManagerBase(string appName, string cryptKey, string authKey)
     {
         SettingsDirectory = $"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}\\Pro Reception\\{appName}";
@@ -31,7 +34,11 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
     protected string SettingsDirectory { get; }
     protected T Settings { get; }
 
-    public Guid GetDistributionServerAppId() => Settings.DistributionServerAppId;
+    public Guid GetDistributionServerAppId() => _debugOverrideDistributionServerAppId ?? Settings.DistributionServerAppId;
+
+    [Conditional("DEBUG")]
+    public void SetDebugOverrideDistributionServerAppId(Guid debugOverrideDistributionServerAppId)
+        => _debugOverrideDistributionServerAppId = debugOverrideDistributionServerAppId;
 
     public TokensRecord? GetTokens()
         => Settings.ProReceptionTokens != null
