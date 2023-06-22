@@ -5,6 +5,7 @@ using System.Text.Json;
 using Configuration;
 using Flurl.Http;
 using Flurl.Http.Configuration;
+using FlurlClientFactories;
 using Hubs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR;
@@ -33,6 +34,7 @@ public static class WebApplicationBuilderExtensions
                     hubContext?.Clients.All.ReceiveLog(new LogsHub.LogMessage { Timestamp = evt.Timestamp, Message = evt.RenderMessage() });
                 }).Subscribe()));
 
+        var proxyConfigurationSection = builder.Configuration.GetSection("Proxy");
         FlurlHttp.Configure(x =>
         {
             var serializeOptions = new JsonSerializerOptions
@@ -41,9 +43,11 @@ public static class WebApplicationBuilderExtensions
                 WriteIndented = true
             };
             x.JsonSerializer = new DefaultJsonSerializer(serializeOptions);
+            x.HttpClientFactory = new ProxyFlurlClientFactory(proxyConfigurationSection);
         });
 
         builder.Services.Configure<ProReceptionApiConfiguration>(builder.Configuration.GetSection("ProReceptionApi"));
+        builder.Services.Configure<ProxyConfiguration>(proxyConfigurationSection);
 
         builder.Services.AddSingleton<ISettingsManagerBase>(settingsImplementation);
         builder.Services.AddSingleton<TSettingsManagerInterface>(settingsImplementation);

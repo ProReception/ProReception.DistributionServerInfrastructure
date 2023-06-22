@@ -7,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
-using Polly.Timeout;
 using ProReceptionApi;
 using Settings;
 using Settings.Models.Public;
@@ -19,12 +18,14 @@ public abstract class SignalRHostedService<T> : IHostedService
     private readonly IProReceptionApiClient _proReceptionApiClient;
     private readonly ISettingsManagerBase _settingsManagerBase;
     private readonly ProReceptionApiConfiguration _proReceptionApiConfiguration;
+    private readonly ProxyConfiguration _proxyConfiguration;
 
     private Task? _startUpTask;
     private HubConnection? _hubConnection;
 
     protected SignalRHostedService(
-        IOptions<ProReceptionApiConfiguration> options,
+        IOptions<ProReceptionApiConfiguration> proReceptionApiConfigurationOptions,
+        IOptions<ProxyConfiguration> proxyConfigurationOptions,
         ILogger<T> logger,
         IProReceptionApiClient proReceptionApiClient,
         ISettingsManagerBase settingsManagerBase)
@@ -32,7 +33,8 @@ public abstract class SignalRHostedService<T> : IHostedService
         _logger = logger;
         _proReceptionApiClient = proReceptionApiClient;
         _settingsManagerBase = settingsManagerBase;
-        _proReceptionApiConfiguration = options.Value;
+        _proReceptionApiConfiguration = proReceptionApiConfigurationOptions.Value;
+        _proxyConfiguration = proxyConfigurationOptions.Value;
     }
 
     protected abstract string HubPath { get; }
@@ -114,6 +116,10 @@ public abstract class SignalRHostedService<T> : IHostedService
                 {
                     options.Headers.Add("Authorization", $"Bearer {proReceptionTokens.AccessToken}");
                     options.Headers.Add("X-DistributionServerAppId", _settingsManagerBase.GetDistributionServerAppId().ToString());
+
+#pragma warning disable CA1416
+                    options.Proxy = _proxyConfiguration.GetWebProxy();
+#pragma warning restore CA1416
                 })
                 .WithAutomaticReconnect()
                 .Build();
