@@ -5,40 +5,69 @@
 @using ProReception.DistributionServerInfrastructure.Settings
 
 @inject NavigationManager NavigationManager
-@inject ISettingsManagerBase SettingsManager
+@inject LogService LogService
 
 @implements IAsyncDisposable
 
 <MudText Typo="Typo.h3" GutterBottom="true">Logs</MudText>
-<MudText Class="mb-8">Shows a live view of the logs. To see the historic logs, look at the log files located at @SettingsManager.GetLogFilesPath()</MudText>
 
-@if (_logs.Count == 0)
-{
-    <MudProgressCircular Color="Color.Default" Indeterminate="true" />
-}
-else
-{
-    <MudTable Items="@_logs.OrderByDescending(x => x.Timestamp)" Hover="true" Breakpoint="Breakpoint.Sm">
-        <HeaderContent>
-            <MudTh>Timestamp</MudTh>
-            <MudTh>Message</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd DataLabel="Timestamp">@context.Timestamp.ToString("s")</MudTd>
-            <MudTd DataLabel="Log message">@context.Message</MudTd>
-        </RowTemplate>
-        <PagerContent>
-            <MudTablePager />
-        </PagerContent>
-    </MudTable>
-}
+<MudExpansionPanels Multiple="true">
+    <MudExpansionPanel Text="Log Files">
+        <MudList>
+            @foreach (var logFileName in _logFileNames)
+            {
+                <MudListItem>
+                    <a href="javascript:void(0)" @onclick="() => OpenLogFileContentDialog(logFileName)">@logFileName</a>
+                </MudListItem>
+            }
+        </MudList>
+    </MudExpansionPanel>
+    <MudExpansionPanel Text="Live Logs">
+        @if (_logs.Count == 0)
+        {
+            <MudProgressCircular Color="Color.Default" Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable Items="@_logs.OrderByDescending(x => x.Timestamp)" Hover="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Timestamp</MudTh>
+                    <MudTh>Message</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Timestamp">@context.Timestamp.ToString("s")</MudTd>
+                    <MudTd DataLabel="Log message">@context.Message</MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        }
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+<MudDialog IsVisible="@IsLogFileContentDialogOpen" Options="new DialogOptions { FullScreen = true, CloseButton = true }" @onClose="CloseLogFileContentDialog">
+    <TitleContent>@LogFileFilename</TitleContent>
+    <DialogContent>
+        <MudContainer Style="max-height: 90vh; overflow-y: scroll; max-width: 100%">
+            <pre>@LogFileContent</pre>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
 
 @code {
     private HubConnection? _hubConnection;
     private readonly List<LogsHub.LogMessage> _logs = new();
+    private IEnumerable<string> _logFileNames = new List<string>();
+
+    private bool IsLogFileContentDialogOpen { get; set; }
+    private string? LogFileFilename { get; set; }
+    private string? LogFileContent { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        _logFileNames = LogService.GetLogFileNames();
+
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(NavigationManager.ToAbsoluteUri("/logs-hub"))
             .Build();
@@ -50,6 +79,21 @@ else
         });
 
         await _hubConnection.StartAsync();
+    }
+
+    private async Task OpenLogFileContentDialog(string fileName)
+    {
+        var fileStream = LogService.GetLogFileStream(fileName);
+        using var streamReader = new StreamReader(fileStream);
+        LogFileContent = await streamReader.ReadToEndAsync();
+        LogFileFilename = fileName;
+        IsLogFileContentDialogOpen = true;
+    }
+
+    private void CloseLogFileContentDialog()
+    {
+        IsLogFileContentDialogOpen = false;
+        LogFileContent = string.Empty;
     }
 
     public async ValueTask DisposeAsync()

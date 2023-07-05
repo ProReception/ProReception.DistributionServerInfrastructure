@@ -66,6 +66,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddSingleton<ISettingsManagerBase>(settingsImplementation);
         builder.Services.AddSingleton<TSettingsManagerInterface>(settingsImplementation);
         builder.Services.AddSingleton<IProReceptionApiClient, ProReceptionApiClient>();
+        builder.Services.AddSingleton<LogService>();
 
         return builder;
     }
