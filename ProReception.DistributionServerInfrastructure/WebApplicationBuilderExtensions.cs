@@ -9,6 +9,7 @@ using FlurlClientFactories;
 using Hubs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ProReceptionApi;
 using Serilog;
@@ -35,6 +36,13 @@ public static class WebApplicationBuilderExtensions
                 }).Subscribe()));
 
         var proxyConfigurationSection = builder.Configuration.GetSection("Proxy");
+        var proxyConfiguration = proxyConfigurationSection.Get<ProxyConfiguration>();
+
+        if (proxyConfiguration != null)
+        {
+            Log.Information("Using proxy: {Proxy}", proxyConfiguration.Address);
+        }
+
         FlurlHttp.Configure(x =>
         {
             var serializeOptions = new JsonSerializerOptions
@@ -43,7 +51,11 @@ public static class WebApplicationBuilderExtensions
                 WriteIndented = true
             };
             x.JsonSerializer = new DefaultJsonSerializer(serializeOptions);
-            x.HttpClientFactory = new ProxyFlurlClientFactory(proxyConfigurationSection);
+
+            if (proxyConfiguration != null)
+            {
+                x.HttpClientFactory = new ProxyFlurlClientFactory(proxyConfiguration.GetWebProxy());
+            }
         });
 
         builder.Services.Configure<ProReceptionApiConfiguration>(builder.Configuration.GetSection("ProReceptionApi"));
