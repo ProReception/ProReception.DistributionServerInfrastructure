@@ -1,6 +1,7 @@
 ﻿namespace ProReception.DistributionServerInfrastructure;
 
 using System.Reactive.Linq;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using Configuration;
 using Flurl.Http;
@@ -18,6 +19,7 @@ using Settings;
 
 public static class WebApplicationBuilderExtensions
 {
+    [UnsupportedOSPlatform("browser")] // Proxy support in HttpClientHandler is not supported in browser
     public static WebApplicationBuilder AddProReceptionDistributionServerInfrastructure<TSettingsManagerInterface, TSettingsManagerImplementation>(
         this WebApplicationBuilder builder, TSettingsManagerImplementation settingsImplementation)
         where TSettingsManagerInterface : class, ISettingsManagerBase

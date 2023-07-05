@@ -1,5 +1,6 @@
 ﻿namespace ProReception.DistributionServerInfrastructure.HostedServices;
 
+using System.Runtime.Versioning;
 using Configuration;
 using Flurl;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -11,6 +12,7 @@ using ProReceptionApi;
 using Settings;
 using Settings.Models.Public;
 
+[UnsupportedOSPlatform("browser")] // Proxy support in SignalR is not supported in browser
 public abstract class SignalRHostedService<T> : IHostedService
 {
     private readonly CancellationTokenSource _stoppingCts = new();
@@ -116,10 +118,7 @@ public abstract class SignalRHostedService<T> : IHostedService
                 {
                     options.Headers.Add("Authorization", $"Bearer {proReceptionTokens.AccessToken}");
                     options.Headers.Add("X-DistributionServerAppId", _settingsManagerBase.GetDistributionServerAppId().ToString());
-
-#pragma warning disable CA1416
                     options.Proxy = _proxyConfiguration.GetWebProxy();
-#pragma warning restore CA1416
                 })
                 .WithAutomaticReconnect()
                 .Build();

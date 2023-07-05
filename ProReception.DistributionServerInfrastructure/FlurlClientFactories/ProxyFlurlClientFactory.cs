@@ -1,10 +1,12 @@
 ﻿namespace ProReception.DistributionServerInfrastructure.FlurlClientFactories;
 
 using System.Net;
+using System.Runtime.Versioning;
 using Configuration;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Configuration;
 
+[UnsupportedOSPlatform("browser")] // Proxy support in HttpClientHandler is not supported in browser
 public class ProxyFlurlClientFactory : DefaultHttpClientFactory
 {
     private readonly IWebProxy? _proxy;
@@ -25,10 +27,8 @@ public class ProxyFlurlClientFactory : DefaultHttpClientFactory
 
         var httpClientHandler = (HttpClientHandler)httpMessageHandler;
 
-#pragma warning disable CA1416
         httpClientHandler.Proxy = _proxy;
         httpClientHandler.UseProxy = true;
-#pragma warning restore CA1416
 
         return httpClientHandler;
     }
