@@ -9,12 +9,9 @@ public class ProxyFlurlClientFactory : DefaultHttpClientFactory
 {
     private readonly IWebProxy? _proxy;
 
-    public ProxyFlurlClientFactory(IConfigurationSection proxyConfigurationSection)
+    public ProxyFlurlClientFactory(IWebProxy? proxy)
     {
-        if (proxyConfigurationSection.Exists())
-        {
-            _proxy = proxyConfigurationSection.Get<ProxyConfiguration>()?.GetWebProxy();
-        }
+        _proxy = proxy;
     }
 
     public override HttpMessageHandler CreateMessageHandler()
