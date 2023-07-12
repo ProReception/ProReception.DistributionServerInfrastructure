@@ -3,8 +3,10 @@
 using System.Net;
 using System.Net.Mime;
 using Flurl.Http;
+using JetBrains.Annotations;
 using Models;
 
+[PublicAPI]
 public static class PrinterLabelExtensions
 {
     public static async Task<LabelResponse?> GetPrinterLabelAsync(this IProReceptionApiClient proReceptionApiClient)
