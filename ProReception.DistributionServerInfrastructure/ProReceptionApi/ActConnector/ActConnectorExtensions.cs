@@ -26,4 +26,10 @@ public static class ActConnectorExtensions
 
     public static async Task CheckOut(this IProReceptionApiClient proReceptionApiClient, string batchId, string location, DateTime timestamp)
         => await proReceptionApiClient.Post("act-connector/check-out", new { batchId, location, timestamp });
+
+    public static async Task SaveActUserGroups(this IProReceptionApiClient proReceptionApiClient, SaveActUserGroupsRequest request)
+        => await proReceptionApiClient.Post("act-connector/user-groups", request);
+
+    public static async Task SaveActDoorGroups(this IProReceptionApiClient proReceptionApiClient, SaveActDoorGroupsRequest request)
+        => await proReceptionApiClient.Post("act-connector/door-groups", request);
 }
