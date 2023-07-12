@@ -2,12 +2,12 @@
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using Auth.Models;
 using Configuration;
 using Flurl;
 using Flurl.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Models;
 using Polly;
 using Polly.Retry;
 using Settings;
