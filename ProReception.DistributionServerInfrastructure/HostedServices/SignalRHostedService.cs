@@ -84,7 +84,7 @@ public abstract class SignalRHostedService<T> : IHostedService
         var retryPolicy = Policy
             .Handle<Exception>()
             .WaitAndRetryForeverAsync(
-                _ => TimeSpan.FromSeconds(10),
+                _ => TimeSpan.FromMilliseconds(new Random().Next(100, 10000)),
                 (exception, retryCount, timeToWait) =>
                 {
                     _logger.LogWarning($"Attempt {retryCount} failed: {exception.Message}. Waiting {timeToWait} before next try.");
