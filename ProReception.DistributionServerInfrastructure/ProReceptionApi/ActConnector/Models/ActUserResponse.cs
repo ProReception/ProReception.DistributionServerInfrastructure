@@ -9,7 +9,7 @@ public class ActUserResponse
 
     public string? LastName { get; set; }
 
-    public required string BatchId { get; set; }
+    public required string BadgeId { get; set; }
 
     public DateTime ValidFrom { get; set; }
 
