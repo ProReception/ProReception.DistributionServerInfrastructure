@@ -21,11 +21,8 @@ public static class ActConnectorExtensions
     public static async Task SaveVisitorPassBadgeId(this IProReceptionApiClient proReceptionApiClient, int visitorPassId, string badgeId)
         => await proReceptionApiClient.Post($"act-connector/visitor-passes/{visitorPassId}/badge-id", new { badgeId });
 
-    public static async Task CheckIn(this IProReceptionApiClient proReceptionApiClient, string badgeId, string location, DateTime timestamp, int doorGroupNumber)
-        => await proReceptionApiClient.Post("act-connector/check-in", new { badgeId, location, timestamp, doorGroupNumber });
-
-    public static async Task CheckOut(this IProReceptionApiClient proReceptionApiClient, string badgeId, string location, DateTime timestamp)
-        => await proReceptionApiClient.Post("act-connector/check-out", new { badgeId, location, timestamp });
+    public static async Task DoorPassed(this IProReceptionApiClient proReceptionApiClient, string badgeId, string location, DateTime timestamp, int doorGroupNumber)
+        => await proReceptionApiClient.Post("act-connector/door-passed", new { badgeId, location, timestamp, doorGroupNumber });
 
     public static async Task SaveActUserGroups(this IProReceptionApiClient proReceptionApiClient, SaveActUserGroupsRequest request)
         => await proReceptionApiClient.Post("act-connector/user-groups", request);
