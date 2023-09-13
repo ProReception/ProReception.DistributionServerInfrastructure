@@ -9,6 +9,11 @@ public class LogService
         _settingsManager = settingsManager;
     }
 
+    public string GetLogFilesPath()
+    {
+        return _settingsManager.GetLogFilesPath();
+    }
+
     public IEnumerable<string> GetLogFileNames()
     {
         var directoryPath = _settingsManager.GetLogFilesPath();
