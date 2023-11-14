@@ -1,11 +1,13 @@
 ﻿@namespace ProReception.DistributionServerInfrastructure.Components
 
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.JSInterop
 @using ProReception.DistributionServerInfrastructure.Hubs
 @using ProReception.DistributionServerInfrastructure.Settings
 
 @inject NavigationManager NavigationManager
 @inject LogService LogService
+@inject IJSRuntime JsRuntime
 
 @implements IAsyncDisposable
 
@@ -19,7 +21,7 @@
             @foreach (var logFileName in _logFileNames)
             {
                 <MudListItem>
-                    <a href="javascript:void(0)" @onclick="() => OpenLogFileContentDialog(logFileName)">@logFileName</a>
+                    <a href="javascript:void(0)" @onclick="() => DownloadLogFile(logFileName)">@logFileName</a>
                 </MudListItem>
             }
         </MudList>
@@ -48,23 +50,10 @@
     </MudExpansionPanel>
 </MudExpansionPanels>
 
-<MudDialog IsVisible="@IsLogFileContentDialogOpen" Options="new DialogOptions { FullScreen = true, CloseButton = true }" @onClose="CloseLogFileContentDialog">
-    <TitleContent>@LogFileFilename</TitleContent>
-    <DialogContent>
-        <MudContainer Style="max-height: 90vh; overflow-y: scroll; max-width: 100%">
-            <pre>@LogFileContent</pre>
-        </MudContainer>
-    </DialogContent>
-</MudDialog>
-
 @code {
     private HubConnection? _hubConnection;
     private readonly List<LogsHub.LogMessage> _logs = new();
     private IEnumerable<string> _logFileNames = new List<string>();
-
-    private bool IsLogFileContentDialogOpen { get; set; }
-    private string? LogFileFilename { get; set; }
-    private string? LogFileContent { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,19 +72,15 @@
         await _hubConnection.StartAsync();
     }
 
-    private async Task OpenLogFileContentDialog(string fileName)
+    private async Task DownloadLogFile(string fileName)
     {
         var fileStream = LogService.GetLogFileStream(fileName);
-        using var streamReader = new StreamReader(fileStream);
-        LogFileContent = await streamReader.ReadToEndAsync();
-        LogFileFilename = fileName;
-        IsLogFileContentDialogOpen = true;
-    }
+        using var memoryStream = new MemoryStream();
+        await fileStream.CopyToAsync(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+        var base64String = Convert.ToBase64String(fileBytes);
 
-    private void CloseLogFileContentDialog()
-    {
-        IsLogFileContentDialogOpen = false;
-        LogFileContent = string.Empty;
+        await JsRuntime.InvokeVoidAsync("downloadFileFromBlazor", fileName, "text/plain", base64String);
     }
 
     public async ValueTask DisposeAsync()
@@ -106,3 +91,21 @@
         }
     }
 }
+
+<script>
+    function downloadFileFromBlazor(filename, contentType, contentBase64) {
+        const content = atob(contentBase64); // Decode Base64 string
+        const arrayBuffer = new Uint8Array(content.length);
+        for (let i = 0; i < content.length; i++) {
+            arrayBuffer[i] = content.charCodeAt(i);
+        }
+        const blob = new Blob([arrayBuffer], { type: contentType });
+        
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link); // Required for Firefox
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
