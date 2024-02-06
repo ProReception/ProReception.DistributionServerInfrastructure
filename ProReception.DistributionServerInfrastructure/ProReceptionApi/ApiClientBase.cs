@@ -9,7 +9,10 @@ using Flurl.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.CircuitBreaker;
+using Polly.RateLimiting;
 using Polly.Retry;
+using Polly.Timeout;
 using Settings;
 using Settings.Models.Public;
 
@@ -18,7 +21,7 @@ public abstract class ApiClientBase
     private readonly ILogger<ApiClientBase> _logger;
     private readonly ISettingsManagerBase _settingsManagerBase;
     private readonly ProReceptionApiConfiguration _configuration;
-    private readonly AsyncRetryPolicy _retryPolicy;
+    private readonly ResiliencePipeline _resiliencePipeline;
 
     protected ApiClientBase(
         ILogger<ApiClientBase> logger,
@@ -29,14 +32,25 @@ public abstract class ApiClientBase
         _settingsManagerBase = settingsManagerBase;
         _configuration = options.Value;
 
-        _retryPolicy = Policy
-            .Handle<FlurlHttpException>(IsWorthRetrying)
-            .WaitAndRetryAsync(4, retryAttempt =>
+        _resiliencePipeline = new ResiliencePipelineBuilder()
+            .AddRateLimiter(new RateLimiterStrategyOptions())
+            .AddTimeout(new TimeoutStrategyOptions { Timeout = TimeSpan.FromMinutes(1) })
+            .AddRetry(new RetryStrategyOptions
             {
-                var nextAttemptIn = TimeSpan.FromSeconds(Math.Pow(2, retryAttempt * 3)); // Wait times: 9s, 36s, 81s & 144s ~ 4,5m in total
-                logger.LogInformation("Retry attempt {retryAttempt}. Next try in {nextAttemptInSeconds} seconds.", retryAttempt, nextAttemptIn.TotalSeconds);
-                return nextAttemptIn;
-            });
+                ShouldHandle = ShouldHandle(),
+                MaxRetryAttempts = 5,
+                Delay = TimeSpan.FromSeconds(2),
+                BackoffType = DelayBackoffType.Exponential,
+                OnRetry = args =>
+                {
+                    var nextAttemptIn = args.RetryDelay;
+                    logger.LogWarning("Request failed. Making retry attempt '{RetryAttempt}' in {NextAttemptInSeconds} seconds.", args.AttemptNumber, nextAttemptIn.TotalSeconds);
+                    return default;
+                }
+            })
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions { ShouldHandle = ShouldHandle() })
+            .AddTimeout(new TimeoutStrategyOptions { Timeout = TimeSpan.FromSeconds(30) })
+            .Build();
     }
 
     public async Task<TokensRecord> GetAndSaveTokens(string username, string password)
@@ -67,14 +81,14 @@ public abstract class ApiClientBase
     {
         var baseRequest = await GetBaseRequestAsync();
 
-        return await _retryPolicy.ExecuteAsync(async () => await getRequestFunc(baseRequest));
+        return await _resiliencePipeline.ExecuteAsync(async _ => await getRequestFunc(baseRequest));
     }
 
     protected async Task Command(Func<IFlurlRequest, Task> postRequestFunc)
     {
         var baseRequest = await GetBaseRequestAsync();
 
-        await _retryPolicy.ExecuteAsync(async () => await postRequestFunc(baseRequest));
+        await _resiliencePipeline.ExecuteAsync(async _ => await postRequestFunc(baseRequest));
     }
 
     private async Task<TokensRecord> SaveTokensToSettings(TokenResponse response)
@@ -85,17 +99,11 @@ public abstract class ApiClientBase
         return _settingsManagerBase.GetTokens()!;
     }
 
-    private static bool IsWorthRetrying(FlurlHttpException ex) {
-        switch (ex.Call.Response.StatusCode) {
-            case (int)HttpStatusCode.RequestTimeout: // 408
-            case (int)HttpStatusCode.BadGateway: // 502
-            case (int)HttpStatusCode.ServiceUnavailable: // 503
-            case (int)HttpStatusCode.GatewayTimeout: // 504
-                return true;
-            default:
-                return false;
-        }
-    }
+    private static PredicateBuilder<object> ShouldHandle() =>
+        new PredicateBuilder().Handle<FlurlHttpException>(ex =>
+            ex.Call.Response?.StatusCode >= 500 ||
+            ex.Call.Response?.StatusCode == (int)HttpStatusCode.RequestTimeout ||
+            ex.Call.Response?.StatusCode == 429);
 
     private async Task<IFlurlRequest> GetBaseRequestAsync()
     {

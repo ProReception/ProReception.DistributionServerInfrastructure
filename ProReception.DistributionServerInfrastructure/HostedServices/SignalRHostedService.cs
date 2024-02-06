@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Polly;
+using Polly.Retry;
 using ProReceptionApi;
 using Settings;
 using Settings.Models.Public;
@@ -81,19 +82,22 @@ public abstract class SignalRHostedService<T> : IHostedService
     {
         _logger.LogInformation($"Starting {typeof(T).Name}...");
 
-        var retryPolicy = Policy
-            .Handle<Exception>()
-            .WaitAndRetryForeverAsync(
-                _ => TimeSpan.FromMilliseconds(new Random().Next(100, 10000)),
-                (exception, retryCount, timeToWait) =>
+        await new ResiliencePipelineBuilder()
+            .AddRetry(new RetryStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder().Handle<Exception>(),
+                MaxRetryAttempts = Int32.MaxValue,
+                Delay = TimeSpan.FromSeconds(3),
+                UseJitter = true,
+                BackoffType = DelayBackoffType.Constant,
+                OnRetry = args =>
                 {
-                    _logger.LogWarning($"Attempt {retryCount} failed: {exception.Message}. Waiting {timeToWait} before next try.");
-                });
-
-        await retryPolicy.ExecuteAsync(async token =>
-        {
-            await LoginAndCreateSignalRConnection(token);
-        }, cancellationToken);
+                    _logger.LogWarning("Attempt {AttemptNumber} failed: {ExceptionMessage}. Waiting {RetryDelay} before next try.", args.AttemptNumber, args.Outcome.Exception?.Message, args.RetryDelay);
+                    return default;
+                }
+            })
+            .Build()
+            .ExecuteAsync(async token => await LoginAndCreateSignalRConnection(token), cancellationToken);
     }
 
     private async Task LoginAndCreateSignalRConnection(CancellationToken cancellationToken)
