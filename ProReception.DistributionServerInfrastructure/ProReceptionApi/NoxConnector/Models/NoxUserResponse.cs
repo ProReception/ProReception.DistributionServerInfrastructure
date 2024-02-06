@@ -9,8 +9,6 @@ public class NoxUserResponse
 
     public string? LastName { get; set; }
 
-    public required string BadgeId { get; set; }
-
     public DateTime ValidFrom { get; set; }
 
     public DateTime ValidTo { get; set; }
@@ -19,11 +17,7 @@ public class NoxUserResponse
 
     public bool IsEnabled { get; set; }
 
-    public string? CompanyName { get; set; }
+    public int? NoxPinCode { get; set; }
 
-    public string? TradeName { get; set; }
-
-    public DateTime? InductionDate { get; set; }
-
-    public int? ActUserGroupNumber { get; set; }
+    public List<int> NoxAreaIds { get; set; } = new();
 }
