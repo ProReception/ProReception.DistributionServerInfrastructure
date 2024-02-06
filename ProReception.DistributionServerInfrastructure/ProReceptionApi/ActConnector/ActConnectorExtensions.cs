@@ -6,7 +6,7 @@ using Models;
 [PublicAPI]
 public static class ActConnectorExtensions
 {
-    public static async Task<ActQueueResponse> GetQueue(this IProReceptionApiClient proReceptionApiClient)
+    public static async Task<ActQueueResponse> GetActQueue(this IProReceptionApiClient proReceptionApiClient)
         => await proReceptionApiClient.Get<ActQueueResponse>("act-connector/queue");
 
     public static async Task<ActUserResponse> GetContractor(this IProReceptionApiClient proReceptionApiClient, int contractorId)
