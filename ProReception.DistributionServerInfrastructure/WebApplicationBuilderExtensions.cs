@@ -6,8 +6,8 @@ using System.Text.Json;
 using Configuration;
 using Flurl.Http;
 using Flurl.Http.Configuration;
-using FlurlClientFactories;
 using Hubs;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
@@ -17,6 +17,7 @@ using Serilog;
 using Serilog.Events;
 using Settings;
 
+[PublicAPI]
 public static class WebApplicationBuilderExtensions
 {
     [UnsupportedOSPlatform("browser")] // Proxy support in HttpClientHandler is not supported in browser
@@ -45,18 +46,23 @@ public static class WebApplicationBuilderExtensions
             Log.Information("Using proxy: {Proxy}", proxyConfiguration.Address);
         }
 
-        FlurlHttp.Configure(x =>
+        FlurlHttp.Clients.WithDefaults(flurlClientBuilder =>
         {
-            var serializeOptions = new JsonSerializerOptions
+            flurlClientBuilder.WithSettings(settings =>
             {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true
-            };
-            x.JsonSerializer = new DefaultJsonSerializer(serializeOptions);
+                settings.JsonSerializer = new DefaultJsonSerializer(new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+            });
 
             if (proxyConfiguration != null)
             {
-                x.HttpClientFactory = new ProxyFlurlClientFactory(proxyConfiguration.GetWebProxy());
+                flurlClientBuilder.ConfigureInnerHandler(httpClientHandler =>
+                {
+                    httpClientHandler.Proxy = proxyConfiguration.GetWebProxy();
+                    httpClientHandler.UseProxy = true;
+                });
             }
         });
 
