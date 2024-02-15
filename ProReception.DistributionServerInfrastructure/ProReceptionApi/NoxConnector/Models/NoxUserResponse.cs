@@ -2,7 +2,7 @@
 
 using JetBrains.Annotations;
 
-[UsedImplicitly]
+[PublicAPI]
 public class NoxUserResponse
 {
     public required string FirstName { get; set; }
@@ -19,5 +19,5 @@ public class NoxUserResponse
 
     public int? NoxPinCode { get; set; }
 
-    public List<int> NoxAreaIds { get; set; } = new();
+    public List<int> NoxAreaNumbers { get; set; } = new();
 }
