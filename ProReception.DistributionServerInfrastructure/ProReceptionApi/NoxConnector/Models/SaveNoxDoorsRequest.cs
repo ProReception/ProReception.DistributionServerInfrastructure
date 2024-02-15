@@ -9,10 +9,11 @@ public class SaveNoxDoorsRequest
 
     public List<NoxDoor> NoxDoors { get; set; } = new();
 
+    [PublicAPI]
     public class NoxDoor
     {
         public required string Name { get; set; }
 
-        public int NoxAreaId { get; set; }
+        public int NoxAreaNumber { get; set; }
     }
 }
