@@ -77,19 +77,21 @@ public abstract class ApiClientBase
         return await SaveTokensToSettings(response);
     }
 
-    protected async Task<T> Query<T>(Func<IFlurlRequest, Task<T>> getRequestFunc)
-    {
-        var baseRequest = await GetBaseRequestAsync();
+    protected async Task<T> Query<T>(Func<IFlurlRequest, Task<T>> getRequestFunc) =>
+        await _resiliencePipeline.ExecuteAsync(async _ =>
+        {
+            var baseRequest = await GetBaseRequestAsync();
 
-        return await _resiliencePipeline.ExecuteAsync(async _ => await getRequestFunc(baseRequest));
-    }
+            return await getRequestFunc(baseRequest);
+        });
 
-    protected async Task Command(Func<IFlurlRequest, Task> postRequestFunc)
-    {
-        var baseRequest = await GetBaseRequestAsync();
+    protected async Task Command(Func<IFlurlRequest, Task> postRequestFunc) =>
+        await _resiliencePipeline.ExecuteAsync(async _ =>
+        {
+            var baseRequest = await GetBaseRequestAsync();
 
-        await _resiliencePipeline.ExecuteAsync(async _ => await postRequestFunc(baseRequest));
-    }
+            await postRequestFunc(baseRequest);
+        });
 
     private async Task<TokensRecord> SaveTokensToSettings(TokenResponse response)
     {

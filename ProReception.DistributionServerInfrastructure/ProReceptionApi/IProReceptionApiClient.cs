@@ -12,4 +12,5 @@ public interface IProReceptionApiClient
     Task Put(string path, object data);
     Task Patch(string path, object data);
     Task<IFlurlResponse> GetRaw(string path);
+    Task<T> Post<T>(string path, object data);
 }

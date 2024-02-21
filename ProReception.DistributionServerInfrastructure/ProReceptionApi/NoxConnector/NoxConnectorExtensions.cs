@@ -18,6 +18,9 @@ public static class NoxConnectorExtensions
     public static async Task SaveNoxDoors(this IProReceptionApiClient proReceptionApiClient, SaveNoxDoorsRequest request)
         => await proReceptionApiClient.Post("nox-connector/doors", request);
 
-    public static async Task<int> GetNextBadgeId(this IProReceptionApiClient proReceptionApiClient, int clientSiteId)
-        => await proReceptionApiClient.Get<int>($"nox-connector/client-site/{clientSiteId}/badge-id/next");
+    public static async Task<NoxUserResponse> AssignContractorBadgeId(this IProReceptionApiClient proReceptionApiClient, int constructionContractorId)
+        => await proReceptionApiClient.Post<NoxUserResponse>($"nox-connector/contractors/{constructionContractorId}/assign-badge-id", new object());
+
+     public static async Task<NoxUserResponse> AssignVisitorPassBadgeId(this IProReceptionApiClient proReceptionApiClient, int constructionVisitorPassId)
+         => await proReceptionApiClient.Post<NoxUserResponse>($"nox-connector/visitor-passes/{constructionVisitorPassId}/assign-badge-id", new object());
 }
