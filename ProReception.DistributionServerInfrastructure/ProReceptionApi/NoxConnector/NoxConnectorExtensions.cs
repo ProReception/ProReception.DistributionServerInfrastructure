@@ -15,4 +15,7 @@ public static class NoxConnectorExtensions
 
     public static async Task SaveNoxDoors(this IProReceptionApiClient proReceptionApiClient, SaveNoxDoorsRequest request)
         => await proReceptionApiClient.Post("nox-connector/doors", request);
+
+    public static async Task<int> GetNextBadgeId(this IProReceptionApiClient proReceptionApiClient, int clientSiteId)
+        => await proReceptionApiClient.Get<int>($"client-site/{clientSiteId}/badge-id/next");
 }
