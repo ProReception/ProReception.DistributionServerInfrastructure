@@ -23,4 +23,10 @@ public static class NoxConnectorExtensions
 
      public static async Task<NoxUserResponse> AssignVisitorPassBadgeId(this IProReceptionApiClient proReceptionApiClient, int constructionVisitorPassId)
          => await proReceptionApiClient.Post<NoxUserResponse>($"nox-connector/visitor-passes/{constructionVisitorPassId}/assign-badge-id", new object());
+
+     public static async Task SaveContractorCardNumber(this IProReceptionApiClient proReceptionApiClient, int constructionContractorId, string cardNumber)
+         => await proReceptionApiClient.Post($"nox-connector/contractors/{constructionContractorId}/card-number", new { cardNumber });
+
+     public static async Task SaveVisitorPassCardNumber(this IProReceptionApiClient proReceptionApiClient, int constructionVisitorPassId, string cardNumber)
+         => await proReceptionApiClient.Post($"nox-connector/visitor-passes/{constructionVisitorPassId}/card-number", new { cardNumber });
 }

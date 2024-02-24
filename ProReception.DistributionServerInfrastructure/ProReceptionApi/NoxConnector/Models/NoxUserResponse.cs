@@ -9,6 +9,8 @@ public class NoxUserResponse
 
     public string? LastName { get; set; }
 
+    public string? CompanyName { get; set; }
+
     public int? BadgeId { get; set; }
 
     public DateTime ValidFrom { get; set; }
@@ -24,4 +26,6 @@ public class NoxUserResponse
     public List<int> NoxAreaNumbers { get; set; } = new();
 
     public string? NoxUsername { get; set; }
+
+    public string? CardNumber { get; set; }
 }
