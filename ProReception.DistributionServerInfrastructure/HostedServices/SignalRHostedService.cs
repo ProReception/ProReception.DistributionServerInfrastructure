@@ -3,6 +3,7 @@
 using System.Runtime.Versioning;
 using Configuration;
 using Flurl;
+using Flurl.Http;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -90,10 +91,15 @@ public abstract class SignalRHostedService<T> : IHostedService
                 Delay = TimeSpan.FromSeconds(3),
                 UseJitter = true,
                 BackoffType = DelayBackoffType.Constant,
-                OnRetry = args =>
+                OnRetry = async args =>
                 {
-                    _logger.LogWarning("Attempt {AttemptNumber} failed: {ExceptionMessage}. Waiting {RetryDelay} before next try.", args.AttemptNumber, args.Outcome.Exception?.Message, args.RetryDelay);
-                    return default;
+                    var exceptionMessage = args.Outcome.Exception?.Message ?? string.Empty;
+                    if (args.Outcome.Exception is FlurlHttpException flurlException)
+                    {
+                        exceptionMessage += $" Response body: {await flurlException.GetResponseStringAsync()}";
+                    }
+
+                    _logger.LogWarning("Attempt {AttemptNumber} failed: {ExceptionMessage}. Waiting {RetryDelay} before next try.", args.AttemptNumber, exceptionMessage, args.RetryDelay);
                 }
             })
             .Build()
