@@ -28,4 +28,6 @@ public class NoxUserResponse
     public string? NoxUsername { get; set; }
 
     public string? CardNumber { get; set; }
+
+    public int? CardExchangeIdentifier { get; set; }
 }
