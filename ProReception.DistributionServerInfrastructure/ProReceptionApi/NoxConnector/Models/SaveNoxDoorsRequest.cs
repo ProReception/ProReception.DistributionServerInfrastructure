@@ -14,6 +14,8 @@ public class SaveNoxDoorsRequest
     {
         public required string Name { get; set; }
 
+        public short NoxSystemNumber { get; set; }
+
         public int NoxAreaNumber { get; set; }
     }
 }
