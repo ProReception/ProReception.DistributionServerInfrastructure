@@ -23,11 +23,17 @@ public class NoxUserResponse
 
     public int? NoxPinCode { get; set; }
 
-    public List<int> NoxAreaNumbers { get; set; } = new();
+    public List<NoxArea> NoxAreas { get; set; } = new();
 
     public string? NoxUsername { get; set; }
 
     public string? CardNumber { get; set; }
 
     public int? CardExchangeIdentifier { get; set; }
+
+    public class NoxArea
+    {
+        public short NoxSystemNumber { get; set; }
+        public int NoxAreaNumber { get; set; }
+    }
 }
