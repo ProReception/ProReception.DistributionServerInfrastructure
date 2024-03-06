@@ -150,7 +150,7 @@ public abstract class SignalRHostedService<T> : IHostedService
 
             if (!string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken))
             {
-                if (proReceptionTokens.ExpiresAtUtc < DateTime.UtcNow.AddMinutes(-10))
+                if (proReceptionTokens.ExpiresAtUtc.AddMinutes(-10) < DateTime.UtcNow)
                 {
                     return await _proReceptionApiClient.RefreshAndSaveTokens(proReceptionTokens);
                 }
