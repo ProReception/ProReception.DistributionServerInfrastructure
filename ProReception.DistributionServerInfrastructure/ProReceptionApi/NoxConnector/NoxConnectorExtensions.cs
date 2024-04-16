@@ -29,4 +29,10 @@ public static class NoxConnectorExtensions
 
      public static async Task SaveNoxUserCardNumber(this IProReceptionApiClient proReceptionApiClient, string noxUsername, string cardNumber)
          => await proReceptionApiClient.Post($"nox-connector/nox-user/{noxUsername}/card-number", new { cardNumber });
+
+     public static async Task CheckInNox(this IProReceptionApiClient proReceptionApiClient, string noxUsername, CheckInRequest request)
+         => await proReceptionApiClient.Post($"nox-connector/nox-user/{noxUsername}/check-in", request);
+
+     public static async Task CheckOutNox(this IProReceptionApiClient proReceptionApiClient, string noxUsername, CheckOutRequest request)
+         => await proReceptionApiClient.Post($"nox-connector/nox-user/{noxUsername}/check-out", request);
 }
