@@ -23,6 +23,8 @@ public class NoxUserResponse
 
     public int? NoxPinCode { get; set; }
 
+    public int? AlarmCode { get; set; }
+
     public List<NoxArea> NoxAreas { get; set; } = new();
 
     public string? NoxUsername { get; set; }
