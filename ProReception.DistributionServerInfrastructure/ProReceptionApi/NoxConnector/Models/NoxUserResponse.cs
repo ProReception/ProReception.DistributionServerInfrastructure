@@ -33,6 +33,8 @@ public class NoxUserResponse
 
     public int? CardExchangeIdentifier { get; set; }
 
+    public int? NoxUserGroupNumber { get; set; }
+
     public class NoxArea
     {
         public short NoxSystemNumber { get; set; }

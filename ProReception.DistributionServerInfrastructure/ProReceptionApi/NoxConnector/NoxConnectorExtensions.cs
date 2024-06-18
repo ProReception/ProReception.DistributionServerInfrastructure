@@ -21,6 +21,9 @@ public static class NoxConnectorExtensions
     public static async Task SaveNoxAccessRings(this IProReceptionApiClient proReceptionApiClient, SaveNoxAccessRingsRequest request)
         => await proReceptionApiClient.Post("nox-connector/access-rings", request);
 
+    public static async Task SaveNoxUserGroups(this IProReceptionApiClient proReceptionApiClient, SaveNoxUserGroupsRequest request)
+        => await proReceptionApiClient.Post("nox-connector/user-groups", request);
+
     public static async Task<NoxUserResponse> AssignContractorBadgeId(this IProReceptionApiClient proReceptionApiClient, int constructionContractorId)
         => await proReceptionApiClient.Post<NoxUserResponse>($"nox-connector/contractors/{constructionContractorId}/assign-badge-id", new object());
 
