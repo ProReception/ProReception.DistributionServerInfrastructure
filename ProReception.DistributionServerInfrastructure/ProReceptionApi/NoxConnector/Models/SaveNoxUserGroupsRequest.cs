@@ -8,7 +8,7 @@ public class SaveNoxUserGroupsRequest
 
     public class NoxUserGroup
     {
-        public string Name { get; set; }
+        public required string Name { get; set; }
 
         public int Number { get; set; }
     }
