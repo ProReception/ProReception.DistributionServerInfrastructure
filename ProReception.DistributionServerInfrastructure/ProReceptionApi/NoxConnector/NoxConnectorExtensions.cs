@@ -15,6 +15,9 @@ public static class NoxConnectorExtensions
     public static async Task<NoxUserResponse> GetNoxVisitorPass(this IProReceptionApiClient proReceptionApiClient, int visitorPassId)
         => await proReceptionApiClient.Get<NoxUserResponse>($"nox-connector/visitor-passes/{visitorPassId}");
 
+    public static async Task<NoxUserResponse> GetNoxVehicle(this IProReceptionApiClient proReceptionApiClient, int vehicleId)
+        => await proReceptionApiClient.Get<NoxUserResponse>($"nox-connector/vehicle/{vehicleId}");
+
     public static async Task SaveNoxDoors(this IProReceptionApiClient proReceptionApiClient, SaveNoxDoorsRequest request)
         => await proReceptionApiClient.Post("nox-connector/doors", request);
 
