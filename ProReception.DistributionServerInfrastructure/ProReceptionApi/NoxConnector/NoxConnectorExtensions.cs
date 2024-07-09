@@ -33,6 +33,9 @@ public static class NoxConnectorExtensions
      public static async Task<NoxUserResponse> AssignVisitorPassBadgeId(this IProReceptionApiClient proReceptionApiClient, int constructionVisitorPassId)
          => await proReceptionApiClient.Post<NoxUserResponse>($"nox-connector/visitor-passes/{constructionVisitorPassId}/assign-badge-id", new object());
 
+     public static async Task<NoxUserResponse> AssignVehicleBadgeId(this IProReceptionApiClient proReceptionApiClient, int constructionVehicleId)
+         => await proReceptionApiClient.Post<NoxUserResponse>($"nox-connector/vehicle/{constructionVehicleId}/assign-badge-id", new object());
+
      public static async Task SaveNoxUserCardNumber(this IProReceptionApiClient proReceptionApiClient, string noxUsername, string cardNumber)
          => await proReceptionApiClient.Post($"nox-connector/nox-user/{noxUsername}/card-number", new { cardNumber });
 
