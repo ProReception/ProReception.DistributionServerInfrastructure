@@ -15,9 +15,9 @@
 
 <MudText Typo="Typo.body1" GutterBottom="true">Log files are stored here: @LogService.GetLogFilesPath()</MudText>
 
-<MudExpansionPanels Multiple="true">
+<MudExpansionPanels multiple="true">
     <MudExpansionPanel Text="Log Files">
-        <MudList>
+        <MudList T="string">
             @foreach (var logFileName in _logFileNames)
             {
                 <MudListItem>
