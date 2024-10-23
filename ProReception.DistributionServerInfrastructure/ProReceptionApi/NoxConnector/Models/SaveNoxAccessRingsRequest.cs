@@ -10,6 +10,8 @@ public class SaveNoxAccessRingsRequest
     {
         public required string Name { get; set; }
 
-        public int NoxAccessRingId { get; set; }
+        public int NoxSystemNumber { get; set; }
+
+        public int NoxAccessRingRingId { get; set; }
     }
 }

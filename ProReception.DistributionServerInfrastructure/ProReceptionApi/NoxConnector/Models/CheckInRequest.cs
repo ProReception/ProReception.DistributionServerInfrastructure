@@ -6,5 +6,7 @@ public class CheckInRequest
 
     public DateTime Timestamp { get; set; }
 
-    public int AccessRingId { get; set; }
+    public int NoxSystemNumber { get; set; }
+
+    public int AccessRingRingId { get; set; }
 }
