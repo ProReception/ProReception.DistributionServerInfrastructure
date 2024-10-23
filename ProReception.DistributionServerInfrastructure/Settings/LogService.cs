@@ -1,22 +1,15 @@
 ﻿namespace ProReception.DistributionServerInfrastructure.Settings;
 
-public class LogService
+public class LogService(ISettingsManagerBase settingsManager)
 {
-    private readonly ISettingsManagerBase _settingsManager;
-
-    public LogService(ISettingsManagerBase settingsManager)
-    {
-        _settingsManager = settingsManager;
-    }
-
     public string GetLogFilesPath()
     {
-        return _settingsManager.GetLogFilesPath();
+        return settingsManager.GetLogFilesPath();
     }
 
     public IEnumerable<string> GetLogFileNames()
     {
-        var directoryPath = _settingsManager.GetLogFilesPath();
+        var directoryPath = settingsManager.GetLogFilesPath();
         var filePaths = Directory.EnumerateFiles(directoryPath, "*.txt");
 
         return filePaths.Select(Path.GetFileName).Where(name => name != null)!;
@@ -24,7 +17,7 @@ public class LogService
 
     public Stream GetLogFileStream(string fileName)
     {
-        var directoryPath = _settingsManager.GetLogFilesPath();
+        var directoryPath = settingsManager.GetLogFilesPath();
         var filePath = Path.Combine(directoryPath, fileName);
 
         if (!File.Exists(filePath))

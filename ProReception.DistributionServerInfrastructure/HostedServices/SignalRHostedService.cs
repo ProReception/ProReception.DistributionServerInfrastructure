@@ -15,31 +15,18 @@ using Settings;
 using Settings.Models.Public;
 
 [UnsupportedOSPlatform("browser")] // Proxy support in SignalR is not supported in browser
-public abstract class SignalRHostedService<T> : IHostedService
+public abstract class SignalRHostedService<T>(
+    IOptions<ProReceptionApiConfiguration> proReceptionApiConfigurationOptions,
+    IOptions<ProxyConfiguration> proxyConfigurationOptions,
+    ILogger<T> logger,
+    IProReceptionApiClient proReceptionApiClient,
+    ISettingsManagerBase settingsManagerBase)
+    : IHostedService
 {
     private readonly CancellationTokenSource _stoppingCts = new();
-    private readonly ILogger<T> _logger;
-    private readonly IProReceptionApiClient _proReceptionApiClient;
-    private readonly ISettingsManagerBase _settingsManagerBase;
-    private readonly ProReceptionApiConfiguration _proReceptionApiConfiguration;
-    private readonly ProxyConfiguration _proxyConfiguration;
 
     private Task? _startUpTask;
     private HubConnection? _hubConnection;
-
-    protected SignalRHostedService(
-        IOptions<ProReceptionApiConfiguration> proReceptionApiConfigurationOptions,
-        IOptions<ProxyConfiguration> proxyConfigurationOptions,
-        ILogger<T> logger,
-        IProReceptionApiClient proReceptionApiClient,
-        ISettingsManagerBase settingsManagerBase)
-    {
-        _logger = logger;
-        _proReceptionApiClient = proReceptionApiClient;
-        _settingsManagerBase = settingsManagerBase;
-        _proReceptionApiConfiguration = proReceptionApiConfigurationOptions.Value;
-        _proxyConfiguration = proxyConfigurationOptions.Value;
-    }
 
     protected abstract string HubPath { get; }
 
@@ -52,7 +39,7 @@ public abstract class SignalRHostedService<T> : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation($"Stopping {typeof(T).Name}...");
+        logger.LogInformation($"Stopping {typeof(T).Name}...");
 
         // Stop called without start
         if (_startUpTask == null)
@@ -63,7 +50,7 @@ public abstract class SignalRHostedService<T> : IHostedService
         try
         {
             // Signal cancellation to the executing method
-            _stoppingCts.Cancel();
+            await _stoppingCts.CancelAsync();
         }
         finally
         {
@@ -81,7 +68,7 @@ public abstract class SignalRHostedService<T> : IHostedService
 
     private async Task ExecuteStartUp(CancellationToken cancellationToken)
     {
-        _logger.LogInformation($"Starting {typeof(T).Name}...");
+        logger.LogInformation($"Starting {typeof(T).Name}...");
 
         await new ResiliencePipelineBuilder()
             .AddRetry(new RetryStrategyOptions
@@ -99,7 +86,7 @@ public abstract class SignalRHostedService<T> : IHostedService
                         exceptionMessage += $" Response body: {await flurlException.GetResponseStringAsync()}";
                     }
 
-                    _logger.LogWarning("Attempt {AttemptNumber} failed: {ExceptionMessage}. Waiting {RetryDelay} before next try.", args.AttemptNumber, exceptionMessage, args.RetryDelay);
+                    logger.LogWarning("Attempt {AttemptNumber} failed: {ExceptionMessage}. Waiting {RetryDelay} before next try.", args.AttemptNumber, exceptionMessage, args.RetryDelay);
                 }
             })
             .Build()
@@ -121,14 +108,14 @@ public abstract class SignalRHostedService<T> : IHostedService
                 throw new ApplicationException("The ProReception access token is null or empty (this should never happen)");
             }
 
-            _logger.LogInformation("Establishing SignalR connection...");
+            logger.LogInformation("Establishing SignalR connection...");
 
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl(_proReceptionApiConfiguration.BaseUrl.AppendPathSegment(HubPath), options =>
+                .WithUrl(proReceptionApiConfigurationOptions.Value.BaseUrl.AppendPathSegment(HubPath), options =>
                 {
                     options.Headers.Add("Authorization", $"Bearer {proReceptionTokens.AccessToken}");
-                    options.Headers.Add("X-DistributionServerAppId", _settingsManagerBase.GetDistributionServerAppId().ToString());
-                    options.Proxy = _proxyConfiguration.GetWebProxy();
+                    options.Headers.Add("X-DistributionServerAppId", settingsManagerBase.GetDistributionServerAppId().ToString());
+                    options.Proxy = proxyConfigurationOptions.Value.GetWebProxy();
                 })
                 .WithAutomaticReconnect()
                 .Build();
@@ -137,14 +124,14 @@ public abstract class SignalRHostedService<T> : IHostedService
 
             _hubConnection.Closed += async _ =>
             {
-                _logger.LogInformation("SignalR connection lost, will retry...");
+                logger.LogInformation("SignalR connection lost, will retry...");
                 await _hubConnection.StopAsync(cancellationToken);
                 await ExecuteStartUp(cancellationToken);
             };
 
             await _hubConnection.StartAsync(cancellationToken);
 
-            _logger.LogInformation("SignalR connection successfully established");
+            logger.LogInformation("SignalR connection successfully established");
         }
     }
 
@@ -152,19 +139,19 @@ public abstract class SignalRHostedService<T> : IHostedService
     {
         while(!cancellationToken.IsCancellationRequested)
         {
-            var proReceptionTokens = _settingsManagerBase.GetTokens();
+            var proReceptionTokens = settingsManagerBase.GetTokens();
 
             if (!string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken))
             {
                 if (proReceptionTokens.ExpiresAtUtc.AddMinutes(-10) < DateTime.UtcNow)
                 {
-                    return await _proReceptionApiClient.RefreshAndSaveTokens(proReceptionTokens);
+                    return await proReceptionApiClient.RefreshAndSaveTokens(proReceptionTokens);
                 }
 
                 return proReceptionTokens;
             }
 
-            _logger.LogInformation("Not logged into ProReception, sleeping...");
+            logger.LogInformation("Not logged into ProReception, sleeping...");
 
             await Task.Delay(1000, cancellationToken);
         }

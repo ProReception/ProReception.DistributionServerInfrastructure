@@ -6,13 +6,12 @@ using Microsoft.Extensions.Options;
 using ProReception.DistributionServerInfrastructure.Configuration;
 using ProReception.DistributionServerInfrastructure.Settings;
 
-public class ProReceptionApiClient : ApiClientBase, IProReceptionApiClient
+public class ProReceptionApiClient(
+    ILogger<ProReceptionApiClient> logger,
+    ISettingsManagerBase settingsManagerBase,
+    IOptions<ProReceptionApiConfiguration> options)
+    : ApiClientBase(logger, settingsManagerBase, options), IProReceptionApiClient
 {
-    public ProReceptionApiClient(ILogger<ProReceptionApiClient> logger, ISettingsManagerBase settingsManagerBase, IOptions<ProReceptionApiConfiguration> options)
-        : base(logger, settingsManagerBase, options)
-    {
-    }
-
     public async Task<T> Get<T>(string path) => await Query(req => req.AppendPathSegment(path).GetJsonAsync<T>());
 
     public async Task<IFlurlResponse> GetRaw(string path) => await Query(req => req.AppendPathSegment(path).GetAsync());
