@@ -95,6 +95,8 @@ To get the CSS and JS files for a specific version, I create a new app, and then
 
 ````shell
 dotnet new install MudBlazor.Templates
-mkdir MyApplication
-dotnet new mudblazor --name MyApplication -o MyApplication
+mkdir -p mud-test/MyApplication
+dotnet new mudblazor --interactivity Server --name MyApplication --all-interactive --output mud-test/MyApplication
+dotnet new sln -n MyApp -o mud-test
+dotnet sln mud-test/MyApp.sln add mud-test/MyApplication/MyApplication.csproj
 ````
