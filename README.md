@@ -85,7 +85,7 @@ The components can be used inside your Razor views.
 <Logs />
 ```
 
-### MudBlazor
+## MudBlazor
 
 There is an issue when using MudBlazor from an app running as a Windows Service. See my question on StackOverflow [here](https://stackoverflow.com/questions/73937004/mudblazor-css-and-js-fails-to-load-when-running-as-windows-service).
 
