@@ -9,11 +9,22 @@ using Models;
 [PublicAPI]
 public static class PrinterLabelExtensions
 {
-    public static async Task<LabelResponse?> GetPrinterLabelAsync(this IProReceptionApiClient proReceptionApiClient)
+    /// <summary>
+    /// Retrieves printer label data from the Pro Reception API with optional division filtering.
+    /// </summary>
+    /// <param name="proReceptionApiClient">The API client instance.</param>
+    /// <param name="divisionId">Optional division ID to filter labels. When null, retrieves labels for all divisions.</param>
+    /// <returns>A <see cref="LabelResponse"/> containing the label file data and version, or null if no label is found (HTTP 404).</returns>
+    public static async Task<LabelResponse?> GetPrinterLabelAsync(this IProReceptionApiClient proReceptionApiClient, int? divisionId = null)
     {
         try
         {
-            var response = await proReceptionApiClient.GetRaw("printer-label");
+            var url = new Flurl.Url("printer-label");
+            if (divisionId.HasValue)
+            {
+                url.SetQueryParam("divisionId", divisionId.Value);
+            }
+            var response = await proReceptionApiClient.GetRaw(url.ToString());
 
             return new LabelResponse
             {
