@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFolder", "SolutionF
 		README.md = README.md
 		.github\workflows\nuget.yml = .github\workflows\nuget.yml
 		version.props = version.props
+		CLAUDE.md = CLAUDE.md
+		.gitignore = .gitignore
 	EndProjectSection
 EndProject
 Global
