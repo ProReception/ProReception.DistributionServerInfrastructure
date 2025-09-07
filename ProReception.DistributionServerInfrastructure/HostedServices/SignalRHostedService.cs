@@ -4,6 +4,7 @@ using System.Runtime.Versioning;
 using Configuration;
 using Flurl;
 using Flurl.Http;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,8 +13,8 @@ using Polly;
 using Polly.Retry;
 using ProReceptionApi;
 using Settings;
-using Settings.Models.Public;
 
+[PublicAPI]
 [UnsupportedOSPlatform("browser")] // Proxy support in SignalR is not supported in browser
 public abstract class SignalRHostedService<T>(
     IOptions<ProReceptionApiConfiguration> proReceptionApiConfigurationOptions,
@@ -23,16 +24,16 @@ public abstract class SignalRHostedService<T>(
     ISettingsManagerBase settingsManagerBase)
     : IHostedService
 {
-    private readonly CancellationTokenSource _stoppingCts = new();
+    private readonly CancellationTokenSource stoppingCts = new();
 
-    private Task? _startUpTask;
-    private HubConnection? _hubConnection;
+    private Task? startUpTask;
+    private HubConnection? hubConnection;
 
     protected abstract string HubPath { get; }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _startUpTask = ExecuteStartUp(_stoppingCts.Token);
+        startUpTask = ExecuteStartUp(stoppingCts.Token);
 
         return Task.CompletedTask;
     }
@@ -42,7 +43,7 @@ public abstract class SignalRHostedService<T>(
         logger.LogInformation($"Stopping {typeof(T).Name}...");
 
         // Stop called without start
-        if (_startUpTask == null)
+        if (startUpTask == null)
         {
             return;
         }
@@ -50,16 +51,16 @@ public abstract class SignalRHostedService<T>(
         try
         {
             // Signal cancellation to the executing method
-            await _stoppingCts.CancelAsync();
+            await stoppingCts.CancelAsync();
         }
         finally
         {
             // Wait until the task completes or the stop token triggers
-            await Task.WhenAny(_startUpTask, Task.Delay(Timeout.Infinite, cancellationToken));
+            await Task.WhenAny(startUpTask, Task.Delay(Timeout.Infinite, cancellationToken));
 
-            if (_hubConnection != null)
+            if (hubConnection != null)
             {
-                await _hubConnection.DisposeAsync();
+                await hubConnection.DisposeAsync();
             }
         }
     }
@@ -86,7 +87,7 @@ public abstract class SignalRHostedService<T>(
                         exceptionMessage += $" Response body: {await flurlException.GetResponseStringAsync()}";
                     }
 
-                    logger.LogWarning("Attempt {AttemptNumber} failed: {ExceptionMessage}. Waiting {RetryDelay} before next try.", args.AttemptNumber, exceptionMessage, args.RetryDelay);
+                    logger.LogWarning("Attempt {AttemptNumber} failed: {ExceptionMessage}. Waiting {RetryDelay} before next try", args.AttemptNumber, exceptionMessage, args.RetryDelay);
                 }
             })
             .Build()
@@ -95,67 +96,76 @@ public abstract class SignalRHostedService<T>(
 
     private async Task LoginAndCreateSignalRConnection(CancellationToken cancellationToken)
     {
-        TokensRecord? proReceptionTokens;
-        do
-        {
-            proReceptionTokens = await GetProReceptionTokens(cancellationToken);
-        } while (!cancellationToken.IsCancellationRequested && string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken));
-
         if (!cancellationToken.IsCancellationRequested)
         {
-            if (string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken))
-            {
-                throw new ApplicationException("The ProReception access token is null or empty (this should never happen)");
-            }
-
             logger.LogInformation("Establishing SignalR connection...");
 
-            _hubConnection = new HubConnectionBuilder()
+            hubConnection = new HubConnectionBuilder()
                 .WithUrl(proReceptionApiConfigurationOptions.Value.BaseUrl.AppendPathSegment(HubPath), options =>
                 {
-                    options.Headers.Add("Authorization", $"Bearer {proReceptionTokens.AccessToken}");
+                    // Provide dynamic access token for every (re)connect to avoid stale tokens
+                    options.AccessTokenProvider = async () =>
+                    {
+                        var current = settingsManagerBase.GetTokens();
+                        if (current is null)
+                        {
+                            // No tokens available (e.g., user logged out) -> return null to let reconnect keep retrying
+                            logger.LogInformation("SignalR AccessTokenProvider: no tokens available");
+                            return null;
+                        }
+
+                        // Refresh token if expiring soon
+                        if (current.ExpiresAtUtc.AddMinutes(-10) < DateTime.UtcNow)
+                        {
+                            try
+                            {
+                                current = await proReceptionApiClient.RefreshAndSaveTokens(current);
+                                logger.LogInformation("SignalR AccessTokenProvider: token refreshed");
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogWarning(ex, "SignalR AccessTokenProvider: failed to refresh token");
+                                // Return existing token (may fail with 401 and trigger reconnect), or null if missing
+                                if (string.IsNullOrWhiteSpace(current.AccessToken))
+                                {
+                                    return null;
+                                }
+                            }
+                        }
+
+                        return current.AccessToken;
+                    };
+
                     options.Headers.Add("X-DistributionServerAppId", settingsManagerBase.GetDistributionServerAppId().ToString());
                     options.Proxy = proxyConfigurationOptions.Value.GetWebProxy();
                 })
                 .WithAutomaticReconnect()
                 .Build();
 
-            ConfigureListeners(_hubConnection);
+            ConfigureListeners(hubConnection);
 
-            _hubConnection.Closed += async _ =>
+            hubConnection.Reconnecting += error =>
             {
-                logger.LogInformation("SignalR connection lost, will retry...");
-                await _hubConnection.StopAsync(cancellationToken);
-                await ExecuteStartUp(cancellationToken);
+                logger.LogInformation(error, "SignalR connection reconnecting...");
+                return Task.CompletedTask;
             };
 
-            await _hubConnection.StartAsync(cancellationToken);
+            hubConnection.Reconnected += connectionId =>
+            {
+                logger.LogInformation("SignalR connection reconnected. ConnectionId={ConnectionId}", connectionId);
+                return Task.CompletedTask;
+            };
+
+            hubConnection.Closed += error =>
+            {
+                // Do not call StopAsync or recursively restart; rely on automatic reconnect and outer retry/startup logic
+                logger.LogInformation(error, "SignalR connection closed. Waiting for background retry logic...");
+                return Task.CompletedTask;
+            };
+
+            await hubConnection.StartAsync(cancellationToken);
 
             logger.LogInformation("SignalR connection successfully established");
         }
-    }
-
-    private async Task<TokensRecord?> GetProReceptionTokens(CancellationToken cancellationToken)
-    {
-        while(!cancellationToken.IsCancellationRequested)
-        {
-            var proReceptionTokens = settingsManagerBase.GetTokens();
-
-            if (!string.IsNullOrWhiteSpace(proReceptionTokens?.AccessToken))
-            {
-                if (proReceptionTokens.ExpiresAtUtc.AddMinutes(-10) < DateTime.UtcNow)
-                {
-                    return await proReceptionApiClient.RefreshAndSaveTokens(proReceptionTokens);
-                }
-
-                return proReceptionTokens;
-            }
-
-            logger.LogInformation("Not logged into ProReception, sleeping...");
-
-            await Task.Delay(1000, cancellationToken);
-        }
-
-        return null;
     }
 }
