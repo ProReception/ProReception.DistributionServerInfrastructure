@@ -19,12 +19,8 @@ public static class PrinterLabelExtensions
     {
         try
         {
-            var url = new Flurl.Url("printer-label");
-            if (divisionId.HasValue)
-            {
-                url.SetQueryParam("divisionId", divisionId.Value);
-            }
-            var response = await proReceptionApiClient.GetRaw(url.ToString());
+            var response = await proReceptionApiClient.Query(req =>
+                req.AppendPathSegment("printer-label").SetQueryParam("divisionId", divisionId).GetAsync());
 
             return new LabelResponse
             {

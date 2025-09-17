@@ -77,7 +77,7 @@ public abstract class ApiClientBase
         return await SaveTokensToSettings(response);
     }
 
-    protected async Task<T> Query<T>(Func<IFlurlRequest, Task<T>> getRequestFunc) =>
+    public async Task<T> Query<T>(Func<IFlurlRequest, Task<T>> getRequestFunc) =>
         await _resiliencePipeline.ExecuteAsync(async _ =>
         {
             var baseRequest = await GetBaseRequestAsync();
