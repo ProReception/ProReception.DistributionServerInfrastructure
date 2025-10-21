@@ -35,6 +35,15 @@ public abstract class SignalRHostedService<T>(
     {
         startUpTask = ExecuteStartUp(stoppingCts.Token);
 
+        // Observe exceptions from the background task to prevent unobserved task exceptions from crashing the service
+        _ = startUpTask.ContinueWith(task =>
+        {
+            if (task.IsFaulted && task.Exception != null)
+            {
+                logger.LogError(task.Exception, "Fatal error in {ServiceName} startup - service may be in degraded state", typeof(T).Name);
+            }
+        }, TaskScheduler.Default);
+
         return Task.CompletedTask;
     }
 
@@ -124,11 +133,13 @@ public abstract class SignalRHostedService<T>(
                             }
                             catch (Exception ex)
                             {
-                                logger.LogWarning(ex, "SignalR AccessTokenProvider: failed to refresh token");
-                                // Return existing token (may fail with 401 and trigger reconnect), or null if missing
+                                logger.LogError(ex, "SignalR AccessTokenProvider: CRITICAL - failed to refresh token, using existing token");
+                                // Return existing token (may fail with 401 and trigger reconnect)
+                                // Don't throw - let SignalR handle the authentication failure and reconnect
                                 if (string.IsNullOrWhiteSpace(current.AccessToken))
                                 {
-                                    return null;
+                                    logger.LogError("SignalR AccessTokenProvider: No valid token available, returning empty string");
+                                    return string.Empty;
                                 }
                             }
                         }
