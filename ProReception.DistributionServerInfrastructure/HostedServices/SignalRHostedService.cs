@@ -25,9 +25,11 @@ public abstract class SignalRHostedService<T>(
     : IHostedService
 {
     private readonly CancellationTokenSource stoppingCts = new();
+    private readonly SemaphoreSlim reconnectLock = new(1, 1);
 
     private Task? startUpTask;
     private HubConnection? hubConnection;
+    private bool isShuttingDown;
 
     protected abstract string HubPath { get; }
 
@@ -50,6 +52,9 @@ public abstract class SignalRHostedService<T>(
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation($"Stopping {typeof(T).Name}...");
+
+        // Set flag to prevent reconnection attempts during shutdown
+        isShuttingDown = true;
 
         // Stop called without start
         if (startUpTask == null)
@@ -167,11 +172,44 @@ public abstract class SignalRHostedService<T>(
                 return Task.CompletedTask;
             };
 
-            hubConnection.Closed += error =>
+            hubConnection.Closed += async error =>
             {
-                // Do not call StopAsync or recursively restart; rely on automatic reconnect and outer retry/startup logic
-                logger.LogInformation(error, "SignalR connection closed. Waiting for background retry logic...");
-                return Task.CompletedTask;
+                if (isShuttingDown)
+                {
+                    logger.LogInformation("SignalR connection closed during shutdown, not reconnecting");
+                    return;
+                }
+
+                logger.LogWarning(error, "SignalR connection closed unexpectedly. Attempting to reconnect...");
+
+                // Use semaphore to prevent multiple simultaneous reconnection attempts
+                if (await reconnectLock.WaitAsync(0))
+                {
+                    try
+                    {
+                        // Dispose the old connection
+                        if (hubConnection != null)
+                        {
+                            await hubConnection.DisposeAsync();
+                            hubConnection = null;
+                        }
+
+                        // Restart the connection with retry logic
+                        await ExecuteStartUp(stoppingCts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to reconnect SignalR after connection closed. Will be retried by Polly policy");
+                    }
+                    finally
+                    {
+                        reconnectLock.Release();
+                    }
+                }
+                else
+                {
+                    logger.LogInformation("Reconnection already in progress, skipping duplicate attempt");
+                }
             };
 
             await hubConnection.StartAsync(cancellationToken);
