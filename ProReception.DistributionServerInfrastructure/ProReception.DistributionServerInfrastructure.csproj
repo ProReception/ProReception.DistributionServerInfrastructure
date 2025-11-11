@@ -24,7 +24,7 @@
         <PackageReference Include="Flurl.Http" Version="4.0.2" />
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.10" />
-        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.10" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.10" />
         <PackageReference Include="MudBlazor" Version="8.11.0" />
         <PackageReference Include="Polly.Core" Version="8.6.4" />
