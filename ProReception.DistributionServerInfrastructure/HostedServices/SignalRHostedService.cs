@@ -153,15 +153,23 @@ public abstract class SignalRHostedService<T>(
                                 current = await proReceptionApiClient.RefreshAndSaveTokens(current);
                                 logger.LogInformation("SignalR AccessTokenProvider: token refreshed");
                             }
+                            catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+                            {
+                                logger.LogError(ex, "SignalR AccessTokenProvider: Token refresh failed with 401 Unauthorized. Tokens have been cleared. Returning null to stop authentication attempts.");
+                                // Return null to signal authentication failure
+                                // This will cause SignalR connection to fail and trigger the Closed event
+                                // The Closed event handler will restart ExecuteStartUp which waits for new tokens
+                                return null;
+                            }
                             catch (Exception ex)
                             {
-                                logger.LogError(ex, "SignalR AccessTokenProvider: CRITICAL - failed to refresh token, using existing token");
-                                // Return existing token (may fail with 401 and trigger reconnect)
-                                // Don't throw - let SignalR handle the authentication failure and reconnect
+                                logger.LogError(ex, "SignalR AccessTokenProvider: Failed to refresh token due to network/server error, attempting with existing token");
+                                // For non-401 errors (network issues, server errors, etc.), try with existing token
+                                // It might work, or fail and trigger reconnect
                                 if (string.IsNullOrWhiteSpace(current.AccessToken))
                                 {
-                                    logger.LogError("SignalR AccessTokenProvider: No valid token available, returning empty string");
-                                    return string.Empty;
+                                    logger.LogError("SignalR AccessTokenProvider: No valid token available, returning null");
+                                    return null;
                                 }
                             }
                         }

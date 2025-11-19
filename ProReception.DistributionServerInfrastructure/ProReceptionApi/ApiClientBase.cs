@@ -69,12 +69,21 @@ public abstract class ApiClientBase
     {
         _logger.LogInformation("Refreshing ProReception tokens...");
 
-        var response = await _configuration.BaseUrl
-            .AppendPathSegment("auth/refresh")
-            .PostJsonAsync(new { tokensRecord.AccessToken, tokensRecord.RefreshToken })
-            .ReceiveJson<TokenResponse>();
+        try
+        {
+            var response = await _configuration.BaseUrl
+                .AppendPathSegment("auth/refresh")
+                .PostJsonAsync(new { tokensRecord.AccessToken, tokensRecord.RefreshToken })
+                .ReceiveJson<TokenResponse>();
 
-        return await SaveTokensToSettings(response);
+            return await SaveTokensToSettings(response);
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            _logger.LogWarning("Token refresh failed with 401 Unauthorized. Clearing stored tokens.");
+            await _settingsManagerBase.RemoveTokens();
+            throw; // Re-throw so caller knows refresh failed
+        }
     }
 
     public async Task<T> Query<T>(Func<IFlurlRequest, Task<T>> getRequestFunc) =>
@@ -127,8 +136,15 @@ public abstract class ApiClientBase
             return tokensRecord.AccessToken;
         }
 
-        var refreshedTokens = await RefreshAndSaveTokens(tokensRecord);
-
-        return refreshedTokens.AccessToken;
+        try
+        {
+            var refreshedTokens = await RefreshAndSaveTokens(tokensRecord);
+            return refreshedTokens.AccessToken;
+        }
+        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        {
+            // Tokens were already cleared in RefreshAndSaveTokens
+            throw new InvalidOperationException("Your session has expired. Please log in again.", ex);
+        }
     }
 }
