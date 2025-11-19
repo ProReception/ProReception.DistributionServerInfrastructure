@@ -110,6 +110,23 @@ public abstract class SignalRHostedService<T>(
 
     private async Task LoginAndCreateSignalRConnection(CancellationToken cancellationToken)
     {
+        var hasLoggedMissingTokens = false;
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            if (settingsManagerBase.GetTokens() != null)
+            {
+                break;
+            }
+
+            if (!hasLoggedMissingTokens)
+            {
+                logger.LogInformation("No tokens available. Waiting for user to log in...");
+                hasLoggedMissingTokens = true;
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        }
+
         if (!cancellationToken.IsCancellationRequested)
         {
             logger.LogInformation("Establishing SignalR connection...");
@@ -183,7 +200,7 @@ public abstract class SignalRHostedService<T>(
                 logger.LogWarning(error, "SignalR connection closed unexpectedly. Attempting to reconnect...");
 
                 // Use semaphore to prevent multiple simultaneous reconnection attempts
-                if (await reconnectLock.WaitAsync(0))
+                if (await reconnectLock.WaitAsync(0, cancellationToken))
                 {
                     try
                     {
