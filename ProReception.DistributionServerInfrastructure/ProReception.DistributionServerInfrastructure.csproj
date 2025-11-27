@@ -22,7 +22,7 @@
         <PackageReference Include="AuthenticatedEncryption" Version="2.0.0" />
         <PackageReference Include="FluentValidation" Version="12.1.0" />
         <PackageReference Include="Flurl.Http" Version="4.0.2" />
-        <PackageReference Include="JetBrains.Annotations" Version="2025.2.2" />
+        <PackageReference Include="JetBrains.Annotations" Version="2025.2.4" />
         <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
         <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
