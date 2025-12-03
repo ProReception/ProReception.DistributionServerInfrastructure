@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a .NET 9 Razor SDK library that provides common infrastructure components for Pro Reception distributed applications. The library is packaged and distributed as a NuGet package (`ProReception.DistributionServerInfrastructure`).
+This is a .NET 10 Razor SDK library that provides common infrastructure components for Pro Reception distributed applications. The library is packaged and distributed as a NuGet package (`ProReception.DistributionServerInfrastructure`).
 
 ## Build and Development Commands
 
@@ -77,16 +77,12 @@ Optional proxy configuration:
 
 ### Dependencies
 Key external dependencies:
-- MudBlazor 8.1.0 (UI components)
+- MudBlazor 8.14.0 (UI components)
 - Flurl.Http 4.0.2 (HTTP client)
 - Serilog.AspNetCore 9.0.0 (logging)
 - AuthenticatedEncryption 2.0.0 (settings encryption)
-- System.Reactive 6.0.1 (reactive extensions)
+- System.Reactive 6.1.0 (reactive extensions)
 
 ## Publishing
 
 The library is automatically published to NuGet when `version.props` is updated on the main branch via GitHub Actions workflow.
-
-## MudBlazor Hosting Issue
-
-Due to a known issue with MudBlazor CSS/JS loading in Windows Services, the library uses Azure-hosted MudBlazor assets. When updating MudBlazor versions, the new CSS/JS files must be uploaded to the Pro Reception Azure storage account.
