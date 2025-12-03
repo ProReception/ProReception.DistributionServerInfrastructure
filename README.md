@@ -85,18 +85,3 @@ The components can be used inside your Razor views.
 <Logs />
 ```
 
-## MudBlazor
-
-There is an issue when using MudBlazor from an app running as a Windows Service. See my question on StackOverflow [here](https://stackoverflow.com/questions/73937004/mudblazor-css-and-js-fails-to-load-when-running-as-windows-service).
-
-So, my work around is to host the MudBlazor CSS and JS files on Azure storage, and load them from there. This means that every time I update the MudBlazor library, I also need to add the new CSS and JS files to the [Azure storage](https://portal.azure.com/#@proreception.com/resource/subscriptions/4c45a333-eb90-43f8-a38a-e8b4b257cfb3/resourceGroups/Production/providers/Microsoft.Storage/storageAccounts/proreception/storagebrowser).
-
-To get the CSS and JS files for a specific version, I create a new app, and then copy the files when the app is running.
-
-````shell
-dotnet new install MudBlazor.Templates
-mkdir -p mud-test/MyApplication
-dotnet new mudblazor --interactivity Server --name MyApplication --all-interactive --output mud-test/MyApplication
-dotnet new sln -n MyApp -o mud-test
-dotnet sln mud-test/MyApp.sln add mud-test/MyApplication/MyApplication.csproj
-````
