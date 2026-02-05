@@ -1,6 +1,7 @@
 ﻿@namespace ProReception.DistributionServerInfrastructure.Components
 
 @using FluentValidation
+@using ProReception.DistributionServerInfrastructure.Authentication
 @using ProReception.DistributionServerInfrastructure.ProReceptionApi
 @using ProReception.DistributionServerInfrastructure.Settings
 @using ProReception.DistributionServerInfrastructure.Validation
@@ -46,6 +47,9 @@ else
     [Inject]
     IProReceptionApiClient ApiClient { get; set; } = default!;
 
+    [Inject]
+    IAuthenticationService AuthenticationService { get; set; } = default!;
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
@@ -74,7 +78,7 @@ else
 
     private async Task Disconnect()
     {
-        await SettingsManager.RemoveTokens();
+        await AuthenticationService.LogoutAsync();
         _tokensExists = false;
     }
 

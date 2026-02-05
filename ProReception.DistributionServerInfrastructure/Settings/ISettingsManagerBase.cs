@@ -9,4 +9,9 @@ public interface ISettingsManagerBase
     Task SaveTokens(string accessToken, string refreshToken, DateTime expiresAtUtc);
     Task RemoveTokens();
     string GetLogFilesPath();
+
+    /// <summary>
+    /// Called when the user logs out. Override to clear site-specific settings.
+    /// </summary>
+    Task OnUserLoggedOutAsync();
 }

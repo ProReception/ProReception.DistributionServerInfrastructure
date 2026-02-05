@@ -82,6 +82,12 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
         await streamWriter.WriteAsync(Encryption.Encrypt(JsonSerializer.Serialize(Settings), _cryptKey, _authKey));
     }
 
+    /// <summary>
+    /// Called when the user logs out. Override to clear site-specific settings.
+    /// Default implementation does nothing.
+    /// </summary>
+    public virtual Task OnUserLoggedOutAsync() => Task.CompletedTask;
+
     private T Load()
     {
         if (!Directory.Exists(SettingsDirectory))

@@ -1,6 +1,7 @@
 ﻿namespace ProReception.DistributionServerInfrastructure.HostedServices;
 
 using System.Runtime.Versioning;
+using Authentication;
 using Configuration;
 using Flurl;
 using Flurl.Http;
@@ -21,7 +22,8 @@ public abstract class SignalRHostedService<T>(
     IOptions<ProxyConfiguration> proxyConfigurationOptions,
     ILogger<T> logger,
     IProReceptionApiClient proReceptionApiClient,
-    ISettingsManagerBase settingsManagerBase)
+    ISettingsManagerBase settingsManagerBase,
+    IAuthenticationService authenticationService)
     : IHostedService
 {
     private readonly CancellationTokenSource stoppingCts = new();
@@ -35,6 +37,9 @@ public abstract class SignalRHostedService<T>(
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        // Subscribe to logout event to restart connection with new credentials
+        authenticationService.LoggedOut += OnLoggedOutAsync;
+
         startUpTask = ExecuteStartUp(stoppingCts.Token);
 
         // Observe exceptions from the background task to prevent unobserved task exceptions from crashing the service
@@ -80,6 +85,35 @@ public abstract class SignalRHostedService<T>(
     }
 
     protected abstract void ConfigureListeners(HubConnection hubConnection);
+
+    private async Task OnLoggedOutAsync()
+    {
+        logger.LogInformation("{ServiceName}: Logout detected, restarting connection...", typeof(T).Name);
+
+        if (await reconnectLock.WaitAsync(TimeSpan.FromSeconds(5)))
+        {
+            try
+            {
+                // Dispose current connection
+                if (hubConnection != null)
+                {
+                    await hubConnection.DisposeAsync();
+                    hubConnection = null;
+                }
+
+                // Restart - will wait for new tokens and get fresh DistributionServerAppId
+                _ = Task.Run(() => ExecuteStartUp(stoppingCts.Token));
+            }
+            finally
+            {
+                reconnectLock.Release();
+            }
+        }
+        else
+        {
+            logger.LogWarning("{ServiceName}: Could not acquire reconnect lock for logout handling", typeof(T).Name);
+        }
+    }
 
     private async Task ExecuteStartUp(CancellationToken cancellationToken)
     {

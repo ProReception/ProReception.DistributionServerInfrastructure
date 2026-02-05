@@ -3,6 +3,7 @@
 using System.Reactive.Linq;
 using System.Runtime.Versioning;
 using System.Text.Json;
+using Authentication;
 using Configuration;
 using Flurl.Http;
 using Flurl.Http.Configuration;
@@ -72,6 +73,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddSingleton<ISettingsManagerBase>(settingsImplementation);
         builder.Services.AddSingleton<TSettingsManagerInterface>(settingsImplementation);
         builder.Services.AddSingleton<IProReceptionApiClient, ProReceptionApiClient>();
+        builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
         builder.Services.AddSingleton<LogService>();
 
         return builder;
