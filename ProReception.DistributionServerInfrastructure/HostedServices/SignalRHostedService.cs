@@ -88,30 +88,13 @@ public abstract class SignalRHostedService<T>(
 
     private async Task OnLoggedOutAsync()
     {
-        logger.LogInformation("{ServiceName}: Logout detected, restarting connection...", typeof(T).Name);
+        logger.LogInformation("{ServiceName}: Logout detected, disposing connection...", typeof(T).Name);
 
-        if (await reconnectLock.WaitAsync(TimeSpan.FromSeconds(5)))
+        // Dispose current connection - the Closed event handler will handle the restart
+        if (hubConnection != null)
         {
-            try
-            {
-                // Dispose current connection
-                if (hubConnection != null)
-                {
-                    await hubConnection.DisposeAsync();
-                    hubConnection = null;
-                }
-
-                // Restart - will wait for new tokens and get fresh DistributionServerAppId
-                _ = Task.Run(() => ExecuteStartUp(stoppingCts.Token));
-            }
-            finally
-            {
-                reconnectLock.Release();
-            }
-        }
-        else
-        {
-            logger.LogWarning("{ServiceName}: Could not acquire reconnect lock for logout handling", typeof(T).Name);
+            await hubConnection.DisposeAsync();
+            hubConnection = null;
         }
     }
 
