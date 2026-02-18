@@ -5,8 +5,8 @@ using ProReception.DistributionServerInfrastructure.Settings.Models.Public;
 
 public interface IProReceptionApiClient
 {
-    Task<TokensRecord> GetAndSaveTokens(string username, string password);
-    Task<TokensRecord> RefreshAndSaveTokens(TokensRecord tokensRecord);
+    Task<TokensRecord> GetAndSaveTokens(string username, string password, CancellationToken cancellationToken = default);
+    Task<TokensRecord> RefreshAndSaveTokens(TokensRecord tokensRecord, CancellationToken cancellationToken = default);
     Task<T> Get<T>(string path);
     Task Post(string path, object data);
     Task Put(string path, object data);

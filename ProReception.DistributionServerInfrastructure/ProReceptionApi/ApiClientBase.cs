@@ -22,6 +22,7 @@ public abstract class ApiClientBase
     private readonly ISettingsManagerBase _settingsManagerBase;
     private readonly ProReceptionApiConfiguration _configuration;
     private readonly ResiliencePipeline _resiliencePipeline;
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
     protected ApiClientBase(
         ILogger<ApiClientBase> logger,
@@ -53,36 +54,52 @@ public abstract class ApiClientBase
             .Build();
     }
 
-    public async Task<TokensRecord> GetAndSaveTokens(string username, string password)
+    public async Task<TokensRecord> GetAndSaveTokens(string username, string password, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Logging in to ProReception...");
 
         var response = await _configuration.BaseUrl
             .AppendPathSegment("auth/login")
-            .PostJsonAsync(new { username, password })
+            .PostJsonAsync(new { username, password }, cancellationToken: cancellationToken)
             .ReceiveJson<TokenResponse>();
 
         return await SaveTokensToSettings(response);
     }
 
-    public async Task<TokensRecord> RefreshAndSaveTokens(TokensRecord tokensRecord)
+    public async Task<TokensRecord> RefreshAndSaveTokens(TokensRecord tokensRecord, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Refreshing ProReception tokens...");
-
+        await _refreshLock.WaitAsync(cancellationToken);
         try
         {
-            var response = await _configuration.BaseUrl
-                .AppendPathSegment("auth/refresh")
-                .PostJsonAsync(new { tokensRecord.AccessToken, tokensRecord.RefreshToken })
-                .ReceiveJson<TokenResponse>();
+            // Re-read current tokens — another caller may have already refreshed while we waited
+            var current = _settingsManagerBase.GetTokens();
+            if (current != null && DateTime.UtcNow < current.ExpiresAtUtc.AddMinutes(-1))
+            {
+                _logger.LogInformation("Tokens were already refreshed by another caller, skipping refresh");
+                return current;
+            }
 
-            return await SaveTokensToSettings(response);
+            _logger.LogInformation("Refreshing ProReception tokens...");
+
+            try
+            {
+                var response = await _configuration.BaseUrl
+                    .AppendPathSegment("auth/refresh")
+                    .PostJsonAsync(new { tokensRecord.AccessToken, tokensRecord.RefreshToken }, cancellationToken: cancellationToken)
+                    .ReceiveJson<TokenResponse>();
+
+                return await SaveTokensToSettings(response);
+            }
+            catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+            {
+                _logger.LogWarning("Token refresh failed with 401 Unauthorized. Clearing stored tokens.");
+                await _settingsManagerBase.RemoveTokens();
+                throw; // Re-throw so caller knows refresh failed
+            }
         }
-        catch (FlurlHttpException ex) when (ex.StatusCode == 401)
+        finally
         {
-            _logger.LogWarning("Token refresh failed with 401 Unauthorized. Clearing stored tokens.");
-            await _settingsManagerBase.RemoveTokens();
-            throw; // Re-throw so caller knows refresh failed
+            _refreshLock.Release();
         }
     }
 

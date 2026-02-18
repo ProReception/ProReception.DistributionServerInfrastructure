@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using AuthenticatedEncryption;
 using JetBrains.Annotations;
+using Serilog;
 using Models;
 using Models.Internal;
 using Models.Public;
@@ -70,16 +71,30 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
     protected async Task ThreadSafeUpdate(Action<T> updateAction)
     {
         await _semaphoreSlim.WaitAsync();
-        updateAction(Settings);
-        await Save();
-        _semaphoreSlim.Release();
+        try
+        {
+            updateAction(Settings);
+            await Save();
+        }
+        finally
+        {
+            _semaphoreSlim.Release();
+        }
     }
 
     private async Task Save()
     {
-        await using var settingsFileStream = new FileStream(_settingsFilePath, FileMode.Create);
-        await using var streamWriter = new StreamWriter(settingsFileStream);
-        await streamWriter.WriteAsync(Encryption.Encrypt(JsonSerializer.Serialize(Settings), _cryptKey, _authKey));
+        var tmpPath = _settingsFilePath + ".tmp";
+
+        await using (var settingsFileStream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        await using (var streamWriter = new StreamWriter(settingsFileStream))
+        {
+            await streamWriter.WriteAsync(Encryption.Encrypt(JsonSerializer.Serialize(Settings), _cryptKey, _authKey));
+            await streamWriter.FlushAsync();
+            await settingsFileStream.FlushAsync();
+        }
+
+        File.Move(tmpPath, _settingsFilePath, overwrite: true);
     }
 
     /// <summary>
@@ -95,21 +110,76 @@ public abstract class SettingsManagerBase<T> : ISettingsManagerBase where T : Ba
             Directory.CreateDirectory(SettingsDirectory);
         }
 
+        var tmpPath = _settingsFilePath + ".tmp";
+
         if (!File.Exists(_settingsFilePath))
         {
-            return new T();
+            // Attempt recovery from .tmp file if main file is missing
+            if (File.Exists(tmpPath))
+            {
+                Log.Warning("Settings file missing but .tmp file found — recovering from {TmpPath}", tmpPath);
+                try
+                {
+                    File.Move(tmpPath, _settingsFilePath);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to recover settings from .tmp file");
+                    return new T();
+                }
+            }
+            else
+            {
+                return new T();
+            }
         }
 
-        using var settingsFileStream = new FileStream(_settingsFilePath, FileMode.Open);
-        using var streamReader = new StreamReader(settingsFileStream);
+        var settings = File.ReadAllText(_settingsFilePath);
 
-        var settings = streamReader.ReadToEnd();
-        var decryptedSettings = !string.IsNullOrWhiteSpace(settings)
-            ? Encryption.Decrypt(settings, _cryptKey, _authKey)
-            : null;
+        if (string.IsNullOrWhiteSpace(settings))
+        {
+            Log.Warning("Settings file is empty at {SettingsFilePath}", _settingsFilePath);
 
-        return !string.IsNullOrWhiteSpace(decryptedSettings)
-            ? JsonSerializer.Deserialize<T>(decryptedSettings) ?? new T()
-            : new T();
+            // Attempt recovery from .tmp file
+            if (File.Exists(tmpPath))
+            {
+                Log.Warning("Attempting recovery from .tmp file at {TmpPath}", tmpPath);
+                try
+                {
+                    settings = File.ReadAllText(tmpPath);
+                    if (!string.IsNullOrWhiteSpace(settings))
+                    {
+                        File.Move(tmpPath, _settingsFilePath, overwrite: true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to recover settings from .tmp file");
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(settings))
+            {
+                return new T();
+            }
+        }
+
+        try
+        {
+            var decryptedSettings = Encryption.Decrypt(settings, _cryptKey, _authKey);
+
+            if (string.IsNullOrWhiteSpace(decryptedSettings))
+            {
+                Log.Warning("Settings decryption returned empty result");
+                return new T();
+            }
+
+            return JsonSerializer.Deserialize<T>(decryptedSettings) ?? new T();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to decrypt or deserialize settings file at {SettingsFilePath}", _settingsFilePath);
+            return new T();
+        }
     }
 }

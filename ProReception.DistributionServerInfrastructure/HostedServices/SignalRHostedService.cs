@@ -54,7 +54,7 @@ public abstract class SignalRHostedService<T>(
         return Task.CompletedTask;
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public virtual async Task StopAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation($"Stopping {typeof(T).Name}...");
 
@@ -162,13 +162,25 @@ public abstract class SignalRHostedService<T>(
                             return null;
                         }
 
+                        // During shutdown, return existing token as-is — don't attempt a refresh
+                        if (stoppingCts.IsCancellationRequested)
+                        {
+                            logger.LogInformation("SignalR AccessTokenProvider: shutdown in progress, returning current token without refresh");
+                            return current.AccessToken;
+                        }
+
                         // Refresh token if expiring soon
                         if (current.ExpiresAtUtc.AddMinutes(-10) < DateTime.UtcNow)
                         {
                             try
                             {
-                                current = await proReceptionApiClient.RefreshAndSaveTokens(current);
+                                current = await proReceptionApiClient.RefreshAndSaveTokens(current, stoppingCts.Token);
                                 logger.LogInformation("SignalR AccessTokenProvider: token refreshed");
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                logger.LogInformation("SignalR AccessTokenProvider: refresh cancelled during shutdown, returning current token");
+                                return current.AccessToken;
                             }
                             catch (FlurlHttpException ex) when (ex.StatusCode == 401)
                             {
