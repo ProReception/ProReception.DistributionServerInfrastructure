@@ -7,15 +7,12 @@ using Authentication;
 using Configuration;
 using Flurl.Http;
 using Flurl.Http.Configuration;
-using HostedServices;
 using Hubs;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using ProReceptionApi;
 using Serilog;
 using Serilog.Events;
@@ -78,15 +75,6 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddSingleton<IProReceptionApiClient, ProReceptionApiClient>();
         builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
         builder.Services.AddSingleton<LogService>();
-
-        return builder;
-    }
-
-    [PublicAPI]
-    public static WebApplicationBuilder AddWindowsServiceRecovery(this WebApplicationBuilder builder, string serviceName)
-    {
-        builder.Services.AddSingleton<IHostedService>(sp =>
-            new ServiceRecoveryHostedService(serviceName, sp.GetRequiredService<ILogger<ServiceRecoveryHostedService>>()));
 
         return builder;
     }
