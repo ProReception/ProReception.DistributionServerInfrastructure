@@ -26,7 +26,8 @@ public static class PrinterLabelExtensions
             {
                 Filename = new ContentDisposition(response.Headers.FirstOrDefault("Content-Disposition")).FileName,
                 FileContent = await response.GetBytesAsync(),
-                LabelVersion = int.Parse(response.Headers.FirstOrDefault("X-Label-Version") ?? "0")
+                LabelVersion = int.Parse(response.Headers.FirstOrDefault("X-Label-Version") ?? "0"),
+                DivisionAccessDenied = response.Headers.FirstOrDefault("X-Division-Label-Access-Denied") == "true"
             };
         }
         catch (FlurlHttpException flurlHttpException) when (flurlHttpException.StatusCode == (int)HttpStatusCode.NotFound)

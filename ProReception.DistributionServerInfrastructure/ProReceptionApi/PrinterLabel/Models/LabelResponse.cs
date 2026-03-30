@@ -3,4 +3,5 @@
 public class LabelResponse : FileResponse
 {
     public int LabelVersion { get; set; }
+    public bool DivisionAccessDenied { get; set; }
 }
